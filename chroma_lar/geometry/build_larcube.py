@@ -25,6 +25,7 @@ def build_detector(
     # PMT parameters
     pmt_photocathode_surface=None,
     pmt_back_surface=None,
+    pmt_glass_material=None,
     pmt_spacing=500,  # mm
     pmt_gap=10,  # mm from active volume boundary
     pmt_nsteps=20,  # Tessellation for PMT model
@@ -120,7 +121,7 @@ def build_detector(
             target_material,
             default_optics.vacuum,
             color=0xFFFFFFFF,
-            surface=default_optics.reflect0,
+            surface=default_optics.reflect00,
         )
         g.add_solid(cavity_solid)
 
@@ -137,17 +138,17 @@ def build_detector(
 
         # create pmt model
         pmt = build_r5912_pmt(
-            glass_thickness = 3,
-            nzsteps = pmt_nsteps,
-            nsteps = 64,
-            diameter = in2mm(pmt_diameter_in),
-            outer_material = target_material,
-            glass = default_optics.glass,
-            vacuum = default_optics.vacuum,
-            photocathode_surface = pmt_photocathode_surface,
-            back_surface = pmt_back_surface,
-            default_optics= default_optics,
-            )
+            glass_thickness=3,
+            nzsteps=pmt_nsteps,
+            nsteps=64,
+            diameter=in2mm(pmt_diameter_in),
+            outer_material=target_material,
+            glass=pmt_glass_material,
+            vacuum=default_optics.vacuum,
+            photocathode_surface=pmt_photocathode_surface,
+            back_surface=pmt_back_surface,
+            default_optics=default_optics,
+        )
 
         # add pmt to detector
         for p, r, i in zip(pmt_positions, pmt_directions, pmt_indices):
