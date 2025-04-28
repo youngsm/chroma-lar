@@ -57,7 +57,7 @@ def get_config():
         "cathode_surface": db.reflect00,
         # general material parameters
         "default_optics": db,
-        "target_material": db.lar,  # what everything is submerged in
+        "target_material": db.lar_noscatter,  # what everything is submerged in
         # the surface of the cube!
         "active_surface": db.reflect00,
         # Other parameters
