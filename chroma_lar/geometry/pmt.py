@@ -167,10 +167,10 @@ def build_r5912_pmt(
     profile = profile[profile[:, 0] < 0]
     profile[:, 0] = -profile[:, 0]
     # order profile from base to face
-    profile = profile[np.argsort(profile[:, 1])] * diameter / (in2mm(8))
+    profile = profile[np.argsort(profile[:, 1])]
     # set x coordinate to 0.0 for first and last profile along the profile
 
-    mask = profile[:, 1] > -150 * diameter / (in2mm(8))
+    mask = profile[:, 1] > -150
     idx = np.argwhere(mask)[0, 0]
     profile[0, 0] = 0.0  # close it
     profile[-1, 0] = 0.0  # close it
@@ -189,9 +189,10 @@ def build_r5912_pmt(
     front_end[-1, 0] = 0.0  # close it
     profile = np.concatenate([back_end, front_end])
 
-    offset_profile = tools.offset(profile, -glass_thickness * (diameter / in2mm(8)))
+    offset_profile = tools.offset(profile, -glass_thickness)
     offset_profile[0, 0] = 0.0  # close it
     offset_profile[-1, 0] = 0.0  # close it
+    
 
     outer_envelope_mesh = make.rotate_extrude(profile[:, 0], profile[:, 1], nsteps)
     inner_envelope_mesh = make.rotate_extrude(
@@ -218,4 +219,7 @@ def build_r5912_pmt(
         return outer_envelope, inner_envelope
 
     pmt = outer_envelope + inner_envelope
+
+    # scale the pmt
+    pmt.mesh.vertices[:] *= diameter / (in2mm(8))
     return pmt
