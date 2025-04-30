@@ -70,10 +70,13 @@ def build_detector_from_config(config_path: str, **kwargs):
         Detector object
     """
     # Load the configuration
-    config_path = os.path.join(
-        os.path.dirname(__file__), "..", "..", "config", config_path+'.py')
-    
-    config = load_config_from_file(config_path)
+    try:
+        _config_path = os.path.join(
+            os.path.dirname(__file__), "..", "..", "config", config_path+'.py')
+        
+        config = load_config_from_file(_config_path)
+    except Exception as e:
+        config = load_config_from_file(config_path)
     
     # Override with any provided kwargs
     config.update(kwargs)
