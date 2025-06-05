@@ -125,31 +125,30 @@ def build_detector(
         )
         g.add_solid(cavity_solid)
 
+    # generate pmt positions
+    pmt_positions, pmt_indices, pmt_directions = generate_pmt_positions(
+        lx=lx,
+        ly=ly,
+        lz=lz,
+        spacing_y=pmt_spacing,
+        spacing_z=pmt_spacing,
+        gap_pmt_active=pmt_gap,
+    )
+
+    # create pmt model
+    pmt = build_r5912_pmt(
+        glass_thickness=3,
+        nzsteps=pmt_nsteps,
+        nsteps=64,
+        diameter=in2mm(pmt_diameter_in),
+        outer_material=target_material,
+        glass=pmt_glass_material,
+        vacuum=default_optics.vacuum,
+        photocathode_surface=pmt_photocathode_surface,
+        back_surface=pmt_back_surface,
+        default_optics=default_optics,
+    )
     if include_pmts:
-        # generate pmt positions
-        pmt_positions, pmt_indices, pmt_directions = generate_pmt_positions(
-            lx=lx,
-            ly=ly,
-            lz=lz,
-            spacing_y=pmt_spacing,
-            spacing_z=pmt_spacing,
-            gap_pmt_active=pmt_gap,
-        )
-
-        # create pmt model
-        pmt = build_r5912_pmt(
-            glass_thickness=3,
-            nzsteps=pmt_nsteps,
-            nsteps=64,
-            diameter=in2mm(pmt_diameter_in),
-            outer_material=target_material,
-            glass=pmt_glass_material,
-            vacuum=default_optics.vacuum,
-            photocathode_surface=pmt_photocathode_surface,
-            back_surface=pmt_back_surface,
-            default_optics=default_optics,
-        )
-
         # add pmt to detector
         for p, r, i in zip(pmt_positions, pmt_directions, pmt_indices):
             # convert positions and directions if they're torch tensors
