@@ -147,7 +147,7 @@ polished_steel_surface.set(
 )  # https://www.klaran.com/images/kb/application-notes/Using-UV-Reflective-Materials-to-Maximize-Disinfection---Application-Note---AN011.pdf
 polished_steel_surface.set("reflect_specular", R)
 polished_steel_surface.set("absorb", 1 - R)
-polished_steel_surface.set("detect", 1)
+# polished_steel_surface.set("detect", 1)
 # ***************************************************************************
 ceramic_surface = geometry.Surface("Ceramic")
 ceramic_reflect = 0.35  # https://engineering.case.edu/centers/sdle/sites/engineering.case.edu.centers.sdle/files/optical_properties_of_aluminum_oxide_determined_f.pdf
