@@ -3,6 +3,7 @@ from math import cos, sin
 import chroma.geometry as geometry
 import chroma.make as make
 import chroma.detector as detector
+from typing import Optional
 
 __exports__ = ["add_wires"]
 
@@ -55,10 +56,21 @@ def make_wire_plane(
     # unit normal (points “across” the wires, used to step pitches)
     n = np.array([-sin(wire_angle), cos(wire_angle)])
 
-    # maximum distance from rectangle centre to cover all hits
-    max_span = np.hypot(ly, lz) * 0.5 + wire_pitch
-    # equally spaced intercepts along the normal
-    intercepts = np.arange(-max_span + offset, max_span + wire_pitch, wire_pitch)
+    # calculate corners of the detector in the YZ plane
+    corners = np.array([
+        [-y_half, -z_half], [+y_half, -z_half], [-y_half, +z_half], [+y_half, +z_half]
+    ], dtype=np.float32)
+    
+    # project corners onto the wire direction to find coverage range
+    cos_theta = cos(wire_angle)
+    sin_theta = sin(wire_angle)
+    r_values = corners[:, 0] * cos_theta + corners[:, 1] * sin_theta
+    r_min = np.min(r_values)
+    r_max = np.max(r_values)
+    
+    # calculate wire indices needed to cover this range
+    idx_min_rel = int(np.floor(r_min / wire_pitch - 1e-9))
+    idx_max_rel = int(np.ceil(r_max / wire_pitch + 1e-9))
 
     meshes = []
     base_cyl = make.cylinder(radius, 1.0, nsteps=nsteps)  # unit-length cylinder along +Y
@@ -70,7 +82,10 @@ def make_wire_plane(
     cA, sA = cos(rot_angle), sin(rot_angle)
     R = np.array([[1, 0, 0], [0, cA, -sA], [0, sA, cA]])
 
-    for s in intercepts:
+    # generate wires for each index in the calculated range
+    for idx_rel in range(idx_min_rel, idx_max_rel + 1):
+        # calculate position of this wire along normal direction
+        s = idx_rel * wire_pitch + offset
         # line centre point at closest approach to rectangle centre
         p0 = n * s  # (y0, z0)
 
@@ -154,4 +169,45 @@ def add_wires(
 
             # add wire at -x position
             g.add_solid(mesh_solid, displacement=(x_pos_1, 0, 0))
+    return g
+
+def rect_pts(w, h):
+    return [-w / 2, -w / 2, w / 2, w / 2], [-h / 2, h / 2, h / 2, -h / 2]
+
+def add_wire_wall(
+    g: detector.Detector,
+    ly: float,
+    lz: float,
+    active_dimensions: dict,
+    offset: float = 0.0,
+    inner_material: Optional[geometry.Material] = None,
+    outer_material: Optional[geometry.Material] = None,
+    surface: Optional[geometry.Surface] = None,
+    default_optics: Optional[detector.Detector] = None,
+):
+    if inner_material is None:
+        inner_material = default_optics.lar
+    if outer_material is None:
+        outer_material = default_optics.lar
+    if surface is None:
+        surface = default_optics.wire_wall_surface
+
+    vertices = [[0, y, z] for y, z in zip(*rect_pts(ly, lz))]
+    triangles = [[0, i + 1, i + 2] for i in range(len(vertices) - 2)]
+    mesh = geometry.Mesh(vertices, triangles, remove_duplicate_vertices=True)
+
+    wire_solid = geometry.Solid(
+        mesh,
+        material1=inner_material,
+        material2=outer_material,
+        surface=surface,
+        color=0xA0A0A0A0,
+    )
+
+    x_pos_1 = active_dimensions["x"][1] + offset
+    x_pos_0 = active_dimensions["x"][0] - offset
+
+    g.add_solid(wire_solid, displacement=(x_pos_0, 0, 0))
+    g.add_solid(wire_solid, displacement=(x_pos_1, 0, 0))
+
     return g
