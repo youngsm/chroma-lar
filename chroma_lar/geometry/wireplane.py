@@ -106,7 +106,7 @@ def make_wire_plane(
         # (X remains 0 – on the Y-Z plane)
 
         meshes.append(
-            geometry.Mesh(v, base_cyl.triangles, remove_duplicate_vertices=False)
+            geometry.Mesh(v, base_cyl.triangles, remove_duplicate_vertices=True)
         )
 
     return meshes
@@ -174,40 +174,40 @@ def add_wires(
 def rect_pts(w, h):
     return [-w / 2, -w / 2, w / 2, w / 2], [-h / 2, h / 2, h / 2, -h / 2]
 
-def add_wire_wall(
-    g: detector.Detector,
-    ly: float,
-    lz: float,
-    active_dimensions: dict,
-    offset: float = 0.0,
-    inner_material: Optional[geometry.Material] = None,
-    outer_material: Optional[geometry.Material] = None,
-    surface: Optional[geometry.Surface] = None,
-    default_optics: Optional[detector.Detector] = None,
-):
-    if inner_material is None:
-        inner_material = default_optics.lar
-    if outer_material is None:
-        outer_material = default_optics.lar
-    if surface is None:
-        surface = default_optics.wire_wall_surface
+# def add_wire_wall(
+#     g: detector.Detector,
+#     ly: float,
+#     lz: float,
+#     active_dimensions: dict,
+#     offset: float = 0.0,
+#     inner_material: Optional[geometry.Material] = None,
+#     outer_material: Optional[geometry.Material] = None,
+#     surface: Optional[geometry.Surface] = None,
+#     default_optics: Optional[detector.Detector] = None,
+# ):
+#     if inner_material is None:
+#         inner_material = default_optics.lar
+#     if outer_material is None:
+#         outer_material = default_optics.lar
+#     if surface is None:
+#         surface = default_optics.wire_wall_surface
 
-    vertices = [[0, y, z] for y, z in zip(*rect_pts(ly, lz))]
-    triangles = [[0, i + 1, i + 2] for i in range(len(vertices) - 2)]
-    mesh = geometry.Mesh(vertices, triangles, remove_duplicate_vertices=True)
+#     vertices = [[0, y, z] for y, z in zip(*rect_pts(ly, lz))]
+#     triangles = [[0, i + 1, i + 2] for i in range(len(vertices) - 2)]
+#     mesh = geometry.Mesh(vertices, triangles, remove_duplicate_vertices=True)
 
-    wire_solid = geometry.Solid(
-        mesh,
-        material1=inner_material,
-        material2=outer_material,
-        surface=surface,
-        color=0xA0A0A0A0,
-    )
+#     wire_solid = geometry.Solid(
+#         mesh,
+#         material1=inner_material,
+#         material2=outer_material,
+#         surface=surface,
+#         color=0xA0A0A0A0,
+#     )
 
-    x_pos_1 = active_dimensions["x"][1] + offset
-    x_pos_0 = active_dimensions["x"][0] - offset
+#     x_pos_1 = active_dimensions["x"][1] + offset
+#     x_pos_0 = active_dimensions["x"][0] - offset
 
-    g.add_solid(wire_solid, displacement=(x_pos_0, 0, 0))
-    g.add_solid(wire_solid, displacement=(x_pos_1, 0, 0))
+#     g.add_solid(wire_solid, displacement=(x_pos_0, 0, 0))
+#     g.add_solid(wire_solid, displacement=(x_pos_1, 0, 0))
 
-    return g
+#     return g

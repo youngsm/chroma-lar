@@ -40,6 +40,7 @@ def get_config():
         "pmt_diameter_in": 8,  # inches
         "pmt_photocathode_surface": db.perfect_pmt_photocathode,
         "pmt_back_surface": db.glossy_surface,
+        "pmt_glass_material": db.glass,
         # Wire plane parameters
         "include_wires": True,
         "wire_diameter": 0.15,  # mm
@@ -48,17 +49,17 @@ def get_config():
         "wire_offsets": [0.0, -3.0, -6.0],  # mm
         "wire_nsteps": 32,
         "wire_inner_material": db.steel_material,
-        "wire_surface": db.steel_surface,
+        "wire_surface": db.polished_steel_surface,
         # Cathode parameters
         "include_cathode": True,
         "cathode_thickness": 6.0,  # mm
         "cathode_inner_material": db.steel_material,
-        "cathode_surface": db.steel_surface,
+        "cathode_surface": db.polished_steel_surface,
         # general material parameters
         "default_optics": db,
         "target_material": db.lar,  # what everything is submerged in
         # the surface of the cube!
-        "active_surface": db.steel_surface,
+        "active_surface": db.polished_steel_surface,
         # Other parameters
         "include_active": True,
     }

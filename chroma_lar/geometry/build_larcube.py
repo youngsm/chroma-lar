@@ -8,7 +8,7 @@ import chroma.make as make
 import chroma.transform as transform
 import chroma.detector as detector
 from chroma.loader import create_geometry_from_obj
-
+from typing import Literal
 
 def in2mm(in_value):
     """Convert inches to millimeters."""
