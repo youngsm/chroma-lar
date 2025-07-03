@@ -78,9 +78,7 @@ if __name__ == '__main__':
             from chroma.sim import Simulation
             geom = create_geometry_from_obj(geom)
             if not args.vis and args.input is None:
-                sim = Simulation(geom,geant4_processes=db.chroma_g4_processes,
-                                 photon_tracking=db.chroma_photon_tracking,
-                                 particle_tracking=db.chroma_particle_tracking)
+                sim = Simulation(geom,photon_tracking=db.chroma_photon_tracking)
             else:
                 sim = None
     else:
@@ -118,6 +116,7 @@ if __name__ == '__main__':
     if args.input is None:
         gen = mod.__event_generator__(db)
     else:
+        raise NotImplementedError("Root input is not supported in chroma-lite")
         import chroma.io.root as rootio
         gen = rootio.RootReader(args.input)
     if hasattr(db, "num_events"):
@@ -129,6 +128,7 @@ if __name__ == '__main__':
         output = args.output or getattr(db, 'output')
         db.output = output
         print('saving events to %s' % output)
+        raise NotImplementedError("Root output is not supported in chroma-lite")
         import chroma.io.root as rootio
         output = rootio.RootWriter(output,detector=geom)
         def process_event(db,ev): #TODO: consider modular event loop
@@ -151,6 +151,7 @@ if __name__ == '__main__':
         any(process_event(db,ev) for ev in it)
         
     if args.output is not None:
+
         output.close()
         
     if '__simulation_end__' in mod.__dict__:

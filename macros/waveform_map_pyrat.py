@@ -12,7 +12,8 @@ from chroma_lar.geometry import build_detector_from_config
 from photonlib.meta import VoxelMeta
 
 
-def create_photon_bomb(nphotons, pos, voxel_size=30, wavelength=128) -> Photons:
+def sample_photon_bomb(nphotons, pos, voxel_size=30, wavelength=128) -> Photons:
+    # random direction
     costheta = np.random.random(nphotons)*2-1
     sintheta = np.sqrt(1-np.square(costheta))
     phi = np.random.random(nphotons)*2*np.pi
@@ -20,6 +21,7 @@ def create_photon_bomb(nphotons, pos, voxel_size=30, wavelength=128) -> Photons:
     sinphi = np.sin(phi)
     pdir = np.transpose([sintheta*cosphi, sintheta*sinphi, costheta])
 
+    # random polarization
     costheta = np.random.random(nphotons)*2-1
     sintheta = np.sqrt(1-np.square(costheta))
     phi = np.random.random(nphotons)*2*np.pi
@@ -29,6 +31,7 @@ def create_photon_bomb(nphotons, pos, voxel_size=30, wavelength=128) -> Photons:
     ppol = np.cross(pdir, rand_unit)
     ppol = ppol / np.linalg.norm(ppol, ord=2, axis=1, keepdims=True)
 
+    # wavelength
     if type(wavelength) is tuple:
         pwavelength = (
             np.random.random(nphotons) * (wavelength[1] - wavelength[0]) + wavelength[0]
@@ -36,6 +39,7 @@ def create_photon_bomb(nphotons, pos, voxel_size=30, wavelength=128) -> Photons:
     else:
         pwavelength = np.tile(wavelength, nphotons)
 
+    # random position between -voxel_size/2 and voxel_size/2 wrt voxel center
     x = np.random.random(nphotons)*voxel_size-voxel_size/2+pos[0]
     y = np.random.random(nphotons)*voxel_size-voxel_size/2+pos[1]
     z = np.random.random(nphotons)*voxel_size-voxel_size/2+pos[2]
@@ -43,76 +47,32 @@ def create_photon_bomb(nphotons, pos, voxel_size=30, wavelength=128) -> Photons:
 
     return Photons(pos=ppos, dir=pdir, pol=ppol, wavelengths=pwavelength)
 
-
-class H5Writer:
-    def __init__(self, filename, num_pmts=162, num_ticks=1000, max_time=100):
-        self.filename = filename
-        self.num_pmts = num_pmts
-        self.num_ticks = num_ticks
-        self.max_time = max_time
-
-        if os.path.exists(filename):
-            raise FileExistsError(f"File {filename} already exists!")
-        self.file = h5py.File(filename, "w")
-        self.file.create_dataset(
-            "counts",
-            shape=(0,),
-            maxshape=(None,),
-            dtype=np.uint16,
-            chunks=True
-        )
-        self.file.create_dataset(
-            "voxel_ids",
-            shape=(0,),
-            maxshape=(None,),
-            dtype=np.uint32,
-            chunks=True
-        )
-        
-    def save(self, ev, voxel_id):
-        times = ev.flat_hits.t
-        channels = ev.flat_hits.channel
-        counts = np.histogram2d(
-            channels,
-            times,
-            bins=(self.num_pmts, self.num_ticks),
-            range=((0, self.num_pmts), (0, self.max_time)),
-        )[0].flatten()
-        counts = counts.astype(np.uint16)
-        self.file["counts"].resize(self.file["counts"].shape[0] + 1, axis=0)
-        self.file["counts"][-1] = counts
-        self.file["voxel_ids"].resize(self.file["voxel_ids"].shape[0] + 1, axis=0)
-        self.file["voxel_ids"][-1] = voxel_id
-        self.file.flush()
-
-    def close(self):
-        self.file.close()
-
-    def __del__(self):
-        self.close()
-
-
 def __configure__(db):
     """Modify fields in the database here"""
     db.output_filename = "waveform_map.h5"
     db.detector_config = "detector_config_reflect_reflect3wires"
-    db.voxel_shape = (77, 144, 144)
     db.voxel_ranges = ((-2310, 0), (-2160, 2160), (-2160, 2160))
+    db.voxel_size = 30
+
+    db.voxel_shape = (
+        (db.voxel_ranges[0][1]-db.voxel_ranges[0][0])//db.voxel_size,
+        (db.voxel_ranges[1][1]-db.voxel_ranges[1][0])//db.voxel_size,
+        (db.voxel_ranges[2][1]-db.voxel_ranges[2][0])//db.voxel_size,
+    )
+    print('voxel_shape:', db.voxel_shape)
+
+
     db.voxel_index_start = 0
     db.batch_size = 720
     db.nphotons = 200_000
-    db.voxel_size = 30
     db.wavelength = 128
-    db.num_pmts = 162
     db.num_ticks = 1000
     db.max_time = 100
     
-    db.chroma_g4_processes = 0
     db.chroma_photon_tracking = 0
-    db.chroma_particle_tracking = 0
     db.chroma_daq = False
     db.chroma_photons_per_batch = db.nphotons
-    db.chroma_keep_photons_beg = False
+    db.chroma_keep_photons_beg = True
     db.chroma_keep_photons_end = False
     db.chroma_keep_hits = False
     db.chroma_keep_flat_hits = True
@@ -129,6 +89,7 @@ def __define_geometry__(db):
         include_cathode=True,
         include_cavity=True,
     )
+    db.geometry = geometry
     return geometry
 
 
@@ -141,28 +102,63 @@ def __event_generator__(db):
     
     for idx in db.voxel_ids:
         pos = meta.idx_to_coord(idx)
-        yield create_photon_bomb(db.nphotons, pos, voxel_size=db.voxel_size, wavelength=db.wavelength)
-
+        yield sample_photon_bomb(db.nphotons, pos, voxel_size=db.voxel_size, wavelength=db.wavelength)
 
 def __simulation_start__(db):
     """Called at the start of the event loop"""
-    db.writer = H5Writer(
-        db.output_filename, 
-        num_pmts=db.num_pmts, 
-        num_ticks=db.num_ticks, 
-        max_time=db.max_time
-    )
-    db.current_voxel_idx = 0
-    db.num_events = db.batch_size
 
+    # create h5 file
+    if os.path.exists(db.output_filename):
+        raise FileExistsError(f"File {db.output_filename} already exists!")
+    db.file = h5py.File(db.output_filename, "w")
+    db.file.create_dataset(
+        "counts",
+        shape=(0,),
+        maxshape=(None,),
+        dtype=np.uint16, # max: 65535
+        chunks=True
+    )
+    db.file.create_dataset(
+        "voxel_ids",
+        shape=(0,),
+        maxshape=(None,),
+        dtype=np.uint32, # max: a lot more than 65535
+        chunks=True
+    )
+    db.current_ev_idx = 0
+    db.num_events = db.batch_size # for tqdm
+    db.num_pmts = db.geometry.num_channels()
 
 def __process_event__(db, ev):
     """Called for each generated event"""
-    voxel_id = db.voxel_ids[db.current_voxel_idx]
-    db.writer.save(ev, voxel_id)
-    db.current_voxel_idx += 1
+    if db.chroma_keep_photons_beg:
+        assert db.voxel_ids[db.current_ev_idx] == db.meta.coord_to_idx(ev.photons_beg.pos[0]), 'photon positions are not consistent with voxel ids!!'
+    
+    # fill hist2d
+    times = ev.flat_hits.t
+    channels = ev.flat_hits.channel
+    counts = np.histogram2d(
+        channels,
+        times,
+        bins=(db.num_pmts, db.num_ticks),
+        range=((0, db.num_pmts), (0, db.max_time)),
+    )[0].flatten()
+
+    # save to h5 file! uint
+    if np.any(counts > 65535):
+        logger.warning(f"Per-bin waveform count exceeds uint16 maximum value ({counts[counts > 65535]}); clamping to max of 65535")
+        counts = np.clip(counts, None, 65535)
+    counts = counts.astype(np.uint16)
+    db.file["counts"].resize(db.file["counts"].shape[0] + 1, axis=0)
+    db.file["counts"][-1] = counts
+    db.file["voxel_ids"].resize(db.file["voxel_ids"].shape[0] + 1, axis=0)
+    db.file["voxel_ids"][-1] = db.voxel_ids[db.current_ev_idx]
+    db.file.flush()
+
+    # increment event index
+    db.current_ev_idx += 1
 
 
 def __simulation_end__(db):
     """Called at the end of the event loop"""
-    db.writer.close() 
+    db.file.close() 
