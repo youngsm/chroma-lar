@@ -37,7 +37,7 @@ def get_config():
         "pmt_spacing": yaml_config["PMT"]["sensor_spacing"],  # mm
         "pmt_gap": yaml_config["PMT"]["gap_pmt_active"],  # mm
         "pmt_nsteps": 20,
-        "pmt_diameter_in": 8,  # inches
+        "pmt_diameter_in": 4.38,  # inches
         "pmt_photocathode_surface": db.perfect_pmt_photocathode,
         "pmt_back_surface": db.glossy_surface,
         "pmt_glass_material": db.glass,
