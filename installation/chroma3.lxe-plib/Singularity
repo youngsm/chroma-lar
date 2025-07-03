@@ -1,3 +1,0 @@
-Bootstrap: docker
-
-From: youngsm/chroma3:lxe-plib

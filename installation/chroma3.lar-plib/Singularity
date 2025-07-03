@@ -1,0 +1,39 @@
+Bootstrap: docker
+From: pytorch/pytorch:2.5.1-cuda12.4-cudnn9-devel
+
+%post
+    # Install system dependencies
+    apt-get update && apt-get install -y \
+        git \
+        wget \
+        build-essential \
+        && rm -rf /var/lib/apt/lists/*
+
+    cd /opt/
+    wget -O /opt/chroma_version.json https://api.github.com/repos/youngsm/chroma-lite/git/refs/heads/master
+    git clone https://github.com/youngsm/chroma-lite
+    mv chroma-lite chroma
+    cd /opt/chroma/
+    sed -i 's/VIRTUAL_ENV/CONDA_PREFIX/g' setup.py #use anaconda env instead
+
+    # quick fix for EventViewer
+    sed -i '741s/self\.i = len(self\.l-1)/self.i = len(self.l)-1/' chroma/camera.py
+    python3 -m pip install -e .
+    # below are extras for analyses
+    python3 -m pip install -U trimesh numpy scipy scikit-learn h5py fire scikit-build
+    python3 -m pip install git+https://github.com/CIDeR-ML/photonlib.git
+    python3 -m pip install git+https://github.com/CIDeR-ML/siren-lartpc.git
+    python3 -m pip install gdown
+    python3 -m pip install rich
+    cd /workspace/
+    git clone https://github.com/youngsm/chroma-lar
+    cd /workspace/chroma-lar/
+    python3 -m pip install -e .
+    cd /workspace/
+    python3 -m pip install git+https://github.com/CIDeR-ML/sirentv.git
+
+%environment
+    #For jupyter
+    export PORT=8888
+%startscript
+    /bin/bash -l
