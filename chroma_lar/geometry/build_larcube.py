@@ -171,8 +171,12 @@ def build_detector(
 
 
         active = make.box(
-            lx + abs(pmt.mesh.vertices[:, 1].min()) * 2, ly, lz, center=(0, 0, 0)
+            lx + (abs(pmt.mesh.vertices[:, 1].min())+pmt_gap) * 2,
+            ly,
+            lz,
+            center=(0, 0, 0),
         )
+        
         active_solid = geometry.Solid(
             mesh=active,
             material1=target_material,
