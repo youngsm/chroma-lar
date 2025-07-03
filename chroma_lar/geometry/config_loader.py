@@ -72,8 +72,7 @@ def build_detector_from_config(config_path: str, **kwargs):
     # Load the configuration
     try:
         _config_path = os.path.join(
-            os.path.dirname(__file__), "..", "..", "config", config_path+'.py')
-        
+            os.path.dirname(__file__), "..", "config", config_path+'.py')
         config = load_config_from_file(_config_path)
     except Exception as e:
         config = load_config_from_file(config_path)
