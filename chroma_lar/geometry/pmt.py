@@ -74,10 +74,15 @@ def generate_pmt_positions(
                 torch.full((num_hi_pmt,), hi_x_value),
             )
         )
+        normal = torch.zeros((len(x), 3), dtype=torch.float32)
+        normal[:num_lo_pmt, 0] = 1.0  # -x side PMTs face +x direction
+        normal[num_lo_pmt:, 0] = -1.0  # +x side PMTs face -x direction
     elif n_pmt_walls == 1:
         num_pmt = len(y)
         hi_x_value = lx + gap_pmt_active
         x = torch.full((num_pmt,), hi_x_value)  # Single wall PMT at x=lx+gap_pmt_active
+        normal = torch.zeros((len(x), 3), dtype=torch.float32)
+        normal[:, 0] = 1.0  # +x side PMTs face +x direction
     else:
         raise ValueError("Number of PMT walls must be 1 or 2.")
 
@@ -85,9 +90,10 @@ def generate_pmt_positions(
     # Shift every other row to create a hexagonal pattern
 
     # pmt_coords = torch.column_stack((x.flatten(), y.flatten(), z.flatten()))
+
     # change to swap between the sides
     pmt_coords = torch.stack((x, y, z), dim=-1)
-    return pmt_coords, torch.arange(pmt_coords.shape[0], dtype=torch.int32)
+    return pmt_coords, torch.arange(pmt_coords.shape[0], dtype=torch.int32), normal
 
 
 def split_pmt_profile(
