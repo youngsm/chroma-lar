@@ -10,6 +10,7 @@ import sys
 import os
 from typing import Dict, Any, Optional
 from .build_larcube import build_detector
+# import chroma_lar.config as config
 
 
 def load_config_from_file(config_path: str) -> Dict[str, Any]:
@@ -26,21 +27,19 @@ def load_config_from_file(config_path: str) -> Dict[str, Any]:
     dict
         Configuration dictionary
     """
-    # Get the absolute path
-    abs_path = os.path.abspath(config_path)
-    
-    # Extract the module name from the file path
-    module_name = os.path.splitext(os.path.basename(abs_path))[0]
-    
-    # Load the module
-    spec = importlib.util.spec_from_file_location(module_name, abs_path)
-    if spec is None or spec.loader is None:
-        raise ImportError(f"Could not load configuration file: {config_path}")
-        
-    config_module = importlib.util.module_from_spec(spec)
-    sys.modules[module_name] = config_module
-    spec.loader.exec_module(config_module)
-    
+    # try to import as module first
+    try:
+        config_module = importlib.import_module('chroma_lar.config.' + config_path)
+    except ImportError:
+        # fallback to loading from file path
+        spec = importlib.util.spec_from_file_location("config", config_path)
+        if spec is None or spec.loader is None:
+            raise ImportError(f"Could not load configuration file: {config_path}")
+            
+        config_module = importlib.util.module_from_spec(spec)
+        sys.modules["config"] = config_module
+        spec.loader.exec_module(config_module)
+
     # Check if the module has a get_config function
     if not hasattr(config_module, "get_config"):
         raise AttributeError(f"Configuration file {config_path} must define a get_config() function")
