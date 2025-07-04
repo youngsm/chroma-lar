@@ -28,7 +28,7 @@ From: pytorch/pytorch:2.5.1-cuda12.4-cudnn9-devel
     cd /workspace/
     git clone https://github.com/youngsm/chroma-lar
     cd /workspace/chroma-lar/
-    cp /workspace/chroma-lar/chroma_lar_env.sh /etc/profile.d/chroma_lar_env.sh
+    source chroma_lar_env.sh
     python3 -m pip install -e .
     cd /workspace/
     python3 -m pip install git+https://github.com/CIDeR-ML/sirentv.git
