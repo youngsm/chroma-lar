@@ -4,14 +4,15 @@ import sys
 import math
 import argparse
 import subprocess
-from waveform_config_30cm import config
 import datetime
+import importlib.util
+import inspect
 
-def calculate_batch_size():
+def calculate_batch_size(config):
     """Calculate how many voxels can be processed in the given job time"""
     return int(config["max_job_time"] / config["time_per_voxel"])
 
-def calculate_total_voxels():
+def calculate_total_voxels(config):
     """Calculate the total number of voxels in the detector"""
     x_size = abs(config["detector_x_range"][1] - config["detector_x_range"][0])
     y_size = abs(config["detector_y_range"][1] - config["detector_y_range"][0])
@@ -27,9 +28,9 @@ def calculate_job_time(batch_size, time_per_voxel):
     """Calculate expected job time for a given batch size"""
     return batch_size * time_per_voxel / 3600
 
-def calculate_voxel_indices(job_id, batch_size):
+def calculate_voxel_indices(job_id, batch_size, config):
     """Calculate the range of voxel indices this job should process"""
-    total_voxels, _, _, _ = calculate_total_voxels()
+    total_voxels, _, _, _ = calculate_total_voxels(config)
     
     # Calculate start and end indices for this job
     start_idx = job_id * batch_size
@@ -43,17 +44,24 @@ def main():
     parser.add_argument('--batch-size', type=int, help='Override calculated batch size')
     parser.add_argument('--throttle', type=int, help='Throttle the number of concurrent jobs', default=-1)
     parser.add_argument('--run-job', type=int, help='Run a specific job ID locally for testing', default=None)
+    parser.add_argument('--config', type=str, help='Path to the configuration file', default='./waveform_config_3cm.py')
     args = parser.parse_args()
     
+    # load the configuration file
+    spec = importlib.util.spec_from_file_location("waveform_config", args.config)
+    config_module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(config_module)
+    config = inspect.getattr_static(config_module, "config")
+
     # calculate batch size (# positions / job) and total jobs
-    batch_size = args.batch_size if args.batch_size else calculate_batch_size()
-    total_voxels, nx, ny, nz = calculate_total_voxels()
+    batch_size = args.batch_size if args.batch_size else calculate_batch_size(config)
+    total_voxels, nx, ny, nz = calculate_total_voxels(config)
     total_jobs = math.ceil(total_voxels / batch_size)
     
     # try running a specific job locally for testing
     if args.run_job is not None:
         job_id = args.run_job
-        start_idx, end_idx = calculate_voxel_indices(job_id, batch_size)
+        start_idx, end_idx = calculate_voxel_indices(job_id, batch_size, config)
         output_filename = f"{config['output_dir']}/waveform_map_job_{job_id}.h5"
         
         # Get the absolute path to waveform_map_pyrat.py
