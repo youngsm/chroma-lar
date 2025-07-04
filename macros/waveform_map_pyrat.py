@@ -135,8 +135,9 @@ def __process_event__(db, ev):
     """Called for each generated event"""
     logger.info(f"Processing event {db.current_ev_idx} of {db.batch_size} in {time.time() - db.t_start:.2f} seconds")
     logger.info(f'\t detections: {len(ev.flat_hits)}/{db.nphotons}')
-    _, counts = np.unique(ev.flat_hits.channel, return_counts=True)
-    logger.info(f'\t unique channels: {counts}')
+    unique_channels, counts = np.unique(ev.flat_hits.channel, return_counts=True)
+    logger.info(f'\t unique channels: {len(unique_channels)}')
+    logger.info(f"\t pos: {db.meta.voxel_to_coord(db.voxel_ids[db.current_ev_idx]).numpy()}")
 
     db.t_start = time.time()
     
@@ -146,9 +147,10 @@ def __process_event__(db, ev):
     counts = np.histogram2d(
         channels,
         times,
-        bins=(db.num_pmts, db.num_ticks),
-        range=((0, db.num_pmts), (0, db.max_time)),
+        bins=(db.num_pmts // 2, db.num_ticks),
+        range=((db.num_pmts // 2, db.num_pmts), (0, db.max_time)),
     )[0].flatten()
+    logger.info(f"\t counts: {sum(counts)}")
 
     # save to h5 file! uint
     if np.any(counts > 65535):
