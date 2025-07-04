@@ -119,7 +119,7 @@ def main():
 #SBATCH --partition={config["partition"]}
 #SBATCH --account={config["account"]}
 #SBATCH --output={config["output_dir"]}/wfmap_%A_%a.log
-#SBATCH --error={config["output_dir"]}/wfmap_%A_%a.err
+#SBATCH --error={config["output_dir"]}/wfmap_%A_%a.log
 #SBATCH --time=03:30:00
 #SBATCH --mem=16G
 #SBATCH --gpus=1

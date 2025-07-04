@@ -134,6 +134,10 @@ def __simulation_start__(db):
 def __process_event__(db, ev):
     """Called for each generated event"""
     logger.info(f"Processing event {db.current_ev_idx} of {db.batch_size} in {time.time() - db.t_start:.2f} seconds")
+    logger.info(f'\t detections: {len(ev.flat_hits)}/{db.nphotons}')
+    _, counts = np.unique(ev.flat_hits.channel, return_counts=True)
+    logger.info(f'\t unique channels: {counts}')
+
     db.t_start = time.time()
     
     # fill hist2d
