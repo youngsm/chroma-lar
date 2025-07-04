@@ -25,7 +25,7 @@ RUN python3 -m pip install rich
 WORKDIR /workspace/
 RUN git clone https://github.com/youngsm/chroma-lar
 WORKDIR /workspace/chroma-lar/
-RUN source chroma_lar_env.sh
+RUN sh chroma_lar_env.sh
 RUN python3 -m pip install -e .
 WORKDIR /workspace/
 RUN python3 -m pip install git+https://github.com/CIDeR-ML/sirentv.git
