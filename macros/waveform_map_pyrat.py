@@ -2,10 +2,10 @@ import os
 import logging
 import numpy as np
 import h5py
+import time
 
 from chroma.log import logger
-logger.setLevel(logging.DEBUG)
-from chroma.sim import Simulation
+logger.setLevel(logging.INFO)
 from chroma.event import Photons
 
 from chroma_lar.geometry import build_detector_from_config
@@ -51,16 +51,8 @@ def __configure__(db):
     """Modify fields in the database here"""
     db.output_filename = "waveform_map.h5"
     db.detector_config = "detector_config_reflect_reflect3wires"
-    db.voxel_ranges = ((-2310, 0), (-2160, 2160), (-2160, 2160))
-    db.voxel_size = 30
-
-    db.voxel_shape = (
-        (db.voxel_ranges[0][1]-db.voxel_ranges[0][0])//db.voxel_size,
-        (db.voxel_ranges[1][1]-db.voxel_ranges[1][0])//db.voxel_size,
-        (db.voxel_ranges[2][1]-db.voxel_ranges[2][0])//db.voxel_size,
-    )
-    print('voxel_shape:', db.voxel_shape)
-
+    db.voxel_ranges = None
+    db.voxel_size = None
 
     db.voxel_index_start = 0
     db.batch_size = 720
@@ -99,22 +91,33 @@ def __event_generator__(db):
     meta = VoxelMeta(shape=db.voxel_shape, ranges=db.voxel_ranges)
     db.meta = meta
     db.voxel_ids = range(db.voxel_index_start, db.voxel_index_start + db.batch_size)
-    
     for idx in db.voxel_ids:
-        pos = meta.idx_to_coord(idx)
+        pos = meta.voxel_to_coord(idx).numpy()
         yield sample_photon_bomb(db.nphotons, pos, voxel_size=db.voxel_size, wavelength=db.wavelength)
 
 def __simulation_start__(db):
     """Called at the start of the event loop"""
+    if db.voxel_ranges is None:
+        db.voxel_ranges = ((-2310, 0), (-2160, 2160), (-2160, 2160))
+    if db.voxel_size is None:
+        db.voxel_size = 30
+    
+    db.voxel_shape = (
+        (db.voxel_ranges[0][1] - db.voxel_ranges[0][0]) // db.voxel_size,
+        (db.voxel_ranges[1][1] - db.voxel_ranges[1][0]) // db.voxel_size,
+        (db.voxel_ranges[2][1] - db.voxel_ranges[2][0]) // db.voxel_size,
+    )
+    db.num_pmts = db.geometry.num_channels()
 
     # create h5 file
     if os.path.exists(db.output_filename):
-        raise FileExistsError(f"File {db.output_filename} already exists!")
+        logger.warning(f"File {db.output_filename} already exists! Removing...")
+        os.remove(db.output_filename)
     db.file = h5py.File(db.output_filename, "w")
     db.file.create_dataset(
         "counts",
-        shape=(0,),
-        maxshape=(None,),
+        shape=(0,db.num_pmts*db.num_ticks),
+        maxshape=(None,db.num_pmts*db.num_ticks),
         dtype=np.uint16, # max: 65535
         chunks=True
     )
@@ -126,13 +129,12 @@ def __simulation_start__(db):
         chunks=True
     )
     db.current_ev_idx = 0
-    db.num_events = db.batch_size # for tqdm
-    db.num_pmts = db.geometry.num_channels()
+    db.t_start = time.time()
 
 def __process_event__(db, ev):
     """Called for each generated event"""
-    if db.chroma_keep_photons_beg:
-        assert db.voxel_ids[db.current_ev_idx] == db.meta.coord_to_idx(ev.photons_beg.pos[0]), 'photon positions are not consistent with voxel ids!!'
+    logger.info(f"Processing event {db.current_ev_idx} of {db.batch_size} in {time.time() - db.t_start:.2f} seconds")
+    db.t_start = time.time()
     
     # fill hist2d
     times = ev.flat_hits.t
@@ -157,7 +159,6 @@ def __process_event__(db, ev):
 
     # increment event index
     db.current_ev_idx += 1
-
 
 def __simulation_end__(db):
     """Called at the end of the event loop"""
