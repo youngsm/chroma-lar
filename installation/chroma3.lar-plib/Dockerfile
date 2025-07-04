@@ -11,7 +11,6 @@ WORKDIR /opt/
 ADD https://api.github.com/repos/youngsm/chroma-lite/git/refs/heads/master /opt/chroma_version.json
 RUN git clone https://github.com/youngsm/chroma-lite
 RUN mv chroma-lite chroma
-WORKDIR /opt/chroma/
 RUN sed -i 's/VIRTUAL_ENV/CONDA_PREFIX/g' setup.py #use anaconda env instead
 
 # quick fix for EventViewer
@@ -26,6 +25,7 @@ RUN python3 -m pip install rich
 WORKDIR /workspace/
 RUN git clone https://github.com/youngsm/chroma-lar
 WORKDIR /workspace/chroma-lar/
+COPY chroma_lar_env.sh /etc/profile.d/
 RUN python3 -m pip install -e .
 WORKDIR /workspace/
 RUN python3 -m pip install git+https://github.com/CIDeR-ML/sirentv.git
