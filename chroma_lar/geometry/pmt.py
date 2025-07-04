@@ -3,7 +3,7 @@ from math import pi
 import chroma.tools as tools
 import chroma.geometry as geometry
 import chroma.make as make
-import torch
+# import torch
 import os
 import numpy as np
 import chroma.geometry as geometry
@@ -49,39 +49,39 @@ def generate_pmt_positions(
     print(f"Total PMT number is {n_pmt_walls * grid_y * grid_z}")
 
     # Generate hexagonal grid coordinates
-    y_side, z_side = torch.meshgrid(torch.arange(grid_y), torch.arange(grid_z))
+    y_side, z_side = np.meshgrid(np.arange(grid_y), np.arange(grid_z))
     spacing_buffer_y = ly - (grid_y - 1) * spacing_y
     spacing_buffer_z = lz - (grid_z - 1) * spacing_z
     print(f"Spacing buffer in y: {spacing_buffer_y}, z: {spacing_buffer_z}")
     y_side = y_side * spacing_y - ly / 2 + (spacing_buffer_y / 2 - spacing_y / 4)
     z_side = z_side * spacing_z - lz / 2 + spacing_buffer_z / 2
-    y_side = y_side.to(torch.float32)
-    z_side = z_side.to(torch.float32)
+    y_side = y_side.astype(np.float32)
+    z_side = z_side.astype(np.float32)
     for i in range(y_side.shape[1]):
         if i % 2 == 1:
             y_side[:, i] += spacing_y / 2
 
-    y = torch.tile(y_side, (n_pmt_walls, 1, 1)).flatten()  # reshape(2, -1)
-    z = torch.tile(z_side, (n_pmt_walls, 1, 1)).flatten()  # reshape(2, -1)
+    y = np.tile(y_side, (n_pmt_walls, 1, 1)).flatten()  # reshape(2, -1)
+    z = np.tile(z_side, (n_pmt_walls, 1, 1)).flatten()  # reshape(2, -1)
 
     if n_pmt_walls == 2:
         num_lo_pmt = num_hi_pmt = int(len(y) / 2)
         lo_x_value = -lx / 2 - gap_pmt_active
         hi_x_value = lx / 2 + gap_pmt_active
-        x = torch.concat(
+        x = np.concatenate(
             (
-                torch.full((num_lo_pmt,), lo_x_value),
-                torch.full((num_hi_pmt,), hi_x_value),
+                np.full((num_lo_pmt,), lo_x_value),
+                np.full((num_hi_pmt,), hi_x_value),
             )
         )
-        normal = torch.zeros((len(x), 3), dtype=torch.float32)
+        normal = np.zeros((len(x), 3), dtype=np.float32)
         normal[:num_lo_pmt, 0] = 1.0  # -x side PMTs face +x direction
         normal[num_lo_pmt:, 0] = -1.0  # +x side PMTs face -x direction
     elif n_pmt_walls == 1:
         num_pmt = len(y)
         hi_x_value = lx + gap_pmt_active
-        x = torch.full((num_pmt,), hi_x_value)  # Single wall PMT at x=lx+gap_pmt_active
-        normal = torch.zeros((len(x), 3), dtype=torch.float32)
+        x = np.full((num_pmt,), hi_x_value)  # Single wall PMT at x=lx+gap_pmt_active
+        normal = np.zeros((len(x), 3), dtype=np.float32)
         normal[:, 0] = 1.0  # +x side PMTs face +x direction
     else:
         raise ValueError("Number of PMT walls must be 1 or 2.")
@@ -92,8 +92,8 @@ def generate_pmt_positions(
     # pmt_coords = torch.column_stack((x.flatten(), y.flatten(), z.flatten()))
 
     # change to swap between the sides
-    pmt_coords = torch.stack((x, y, z), dim=-1)
-    return pmt_coords, torch.arange(pmt_coords.shape[0], dtype=torch.int32), normal
+    pmt_coords = np.stack((x, y, z), axis=-1)
+    return pmt_coords, np.arange(pmt_coords.shape[0], dtype=np.int32), normal
 
 
 def split_pmt_profile(

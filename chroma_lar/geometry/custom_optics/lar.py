@@ -83,7 +83,7 @@ def iof_l(lambda_nm, T=87.0, T_c=150.687, rho_c=0.5356):
 wvl = np.linspace(120, 300, 15)
 n = iof_l(wvl)
 # lar.refractive_index = make_prop(wvl, n)
-lar.set("refractive_index", 1.378) # matching simlar
+lar.set("refractive_index", 1.3784) # iof at 128 nm
 
 # --- Rayleigh scattering length (ArDM & DUNE numbers) ----------
 wvl = np.array([128])
