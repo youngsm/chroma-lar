@@ -116,8 +116,8 @@ def __simulation_start__(db):
     db.file = h5py.File(db.output_filename, "w")
     db.file.create_dataset(
         "counts",
-        shape=(0,db.num_pmts*db.num_ticks),
-        maxshape=(None,db.num_pmts*db.num_ticks),
+        shape=(0,db.num_pmts*db.num_ticks // 2),
+        maxshape=(None,db.num_pmts*db.num_ticks // 2),
         dtype=np.uint16, # max: 65535
         chunks=True
     )
@@ -148,7 +148,7 @@ def __process_event__(db, ev):
         channels,
         times,
         bins=(db.num_pmts // 2, db.num_ticks),
-        range=((db.num_pmts // 2, db.num_pmts), (0, db.max_time)),
+        range=((0, db.num_pmts // 2), (0, db.max_time)),
     )[0].flatten()
     logger.info(f"\t counts: {sum(counts)}")
 
