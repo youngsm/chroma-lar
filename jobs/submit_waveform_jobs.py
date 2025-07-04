@@ -5,6 +5,7 @@ import math
 import argparse
 import subprocess
 from waveform_config_30cm import config
+import datetime
 
 def calculate_batch_size():
     """Calculate how many voxels can be processed in the given job time"""
@@ -44,12 +45,12 @@ def main():
     parser.add_argument('--run-job', type=int, help='Run a specific job ID locally for testing', default=None)
     args = parser.parse_args()
     
-    # Calculate batch size and total jobs
+    # calculate batch size (# positions / job) and total jobs
     batch_size = args.batch_size if args.batch_size else calculate_batch_size()
     total_voxels, nx, ny, nz = calculate_total_voxels()
     total_jobs = math.ceil(total_voxels / batch_size)
     
-    # If we're running a specific job locally for testing
+    # try running a specific job locally for testing
     if args.run_job is not None:
         job_id = args.run_job
         start_idx, end_idx = calculate_voxel_indices(job_id, batch_size)
@@ -80,7 +81,7 @@ def main():
         os.system(cmd)
         return
     
-    # Print statistics summary
+    # print statistics summary
     print("\n=== WAVEFORM MAPPING JOB SUBMISSION ===\n")
     print("Configuration Summary:")
     print(f"  Detector dimensions: X={config['detector_x_range']}, Y={config['detector_y_range']}, Z={config['detector_z_range']}")
@@ -97,9 +98,9 @@ def main():
     print(f"  Batch size: {batch_size} voxels per job")
     print(f"  Estimated job runtime: {calculate_job_time(batch_size, config['time_per_voxel']):.1f} hours")
     print(f"  Total jobs required: {total_jobs}")
-    print(f"  Estimated total computation time: {total_jobs * batch_size * config['time_per_voxel']/3600:.1f} CPU-hours")
+    print(f"  Estimated total computation time: {total_jobs * batch_size * config['time_per_voxel']/3600:.1f} GPU-hours")
     
-    # Create output directory if it doesn't exist
+    # create output directory if it doesn't exist
     if not os.path.exists(config["output_dir"]):
         os.makedirs(config["output_dir"])
     
@@ -108,19 +109,21 @@ def main():
     else:
         throttle_str = ""
     
-    # Get the absolute path to the waveform_map_pyrat.py script
+    # get the absolute path to the waveform_map_pyrat.py script
     current_dir = os.path.dirname(os.path.abspath(__file__))
     waveform_map_script = os.path.join(current_dir, "..", "macros", "waveform_map_pyrat.py")
     pyrat_script = os.path.join(current_dir, "..", "pyrat")
     
-    # Create a single slurm job array submission script
+    slurm_limit = str(datetime.timedelta(seconds=config["max_job_time"]+config["slurm_max_job_time_buffer"])) # format: HH:MM:SS
+    
+    # create a single slurm job array submission script
     array_script = f"""#!/bin/bash
 #SBATCH --job-name=wfmap_array
 #SBATCH --partition={config["partition"]}
 #SBATCH --account={config["account"]}
 #SBATCH --output={config["output_dir"]}/wfmap_%A_%a.log
 #SBATCH --error={config["output_dir"]}/wfmap_%A_%a.log
-#SBATCH --time=03:30:00
+#SBATCH --time={slurm_limit}
 #SBATCH --mem=16G
 #SBATCH --gpus=1
 #SBATCH --cpus-per-gpu=6
@@ -146,13 +149,13 @@ echo "Output file: $output_file"
 # Run the pyrat command directly
 PYCUDA_CACHE_DIR=/lscratch singularity exec --nv -B /lscratch,/sdf {config["container"]} \\
     /opt/conda/bin/python {pyrat_script} {waveform_map_script} \\
-    -s detector_config {config["detector_config"]} \\
-    -es voxel_ranges "({config['detector_x_range']}, {config['detector_y_range']}, {config['detector_z_range']})" \\
-    -es voxel_size {config["voxel_size"]} \\
-    -es nphotons {config["nphotons"]} \\
-    -es voxel_index_start $start_idx \\
-    -es batch_size $batch_size \\
-    -s output_filename $output_file
+    --set detector_config {config["detector_config"]} \\
+    --evalset voxel_ranges "({config['detector_x_range']}, {config['detector_y_range']}, {config['detector_z_range']})" \\
+    --evalset voxel_size {config["voxel_size"]} \\
+    --evalset nphotons {config["nphotons"]} \\
+    --evalset voxel_index_start $start_idx \\
+    --evalset batch_size $batch_size \\
+    --set output_filename $output_file
 """
     
     # Save the array job script
@@ -162,7 +165,7 @@ PYCUDA_CACHE_DIR=/lscratch singularity exec --nv -B /lscratch,/sdf {config["cont
     
     print("\nJob Array Submission:")
     if args.dry_run:
-        print("  DRY RUN MODE")
+        print("  DRY RUN")
         print(f"  Would create job array script: {array_script_path}")
         print(f"  Would submit: sbatch {array_script_path}")
         print(f"  Job array would create {total_jobs} tasks (0-{total_jobs-1})")

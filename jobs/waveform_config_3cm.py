@@ -12,9 +12,9 @@ config = {
     # Job parameters
     "time_per_voxel": 15,  # seconds per voxel
     "max_job_time": 3 * 60 * 60,  # 3 hours in seconds
-    "output_dir": "waveform_maps",
+    "slurm_max_job_time_buffer": 2 * 60,  # 2 minutes in seconds
     # Singularity container
-    "container": "installation/chroma3.lar-plib/chroma.simg",
+    "container": "/sdf/home/y/youngsam/sw/dune/sim/chroma-lar/installation/chroma3.lar-plib/chroma.simg",
     "partition": "ampere",
     "account": "neutrino:cider-nu",
 }
