@@ -13,9 +13,30 @@ config = {
     "time_per_voxel": 15,  # seconds per voxel
     "max_job_time": 3 * 60 * 60,  # 3 hours in seconds
     "slurm_max_job_time_buffer": 10 * 60,  # 2 minutes in seconds
-    "output_dir": "waveform_maps",
-    # Singularity container
-    "container": "/sdf/home/y/youngsam/sw/dune/sim/chroma-lar/installation/chroma3.lar-plib/chroma.simg",
-    "partition": "ampere",
-    "account": "neutrino:cider-nu",
+    # Site-specific configuration
+    "site": "slac",
 }
+
+site = dict(
+    slac=dict(
+        container_cmd="singularity exec --nv -B /lscratch,/sdf /sdf/home/y/youngsam/sw/dune/sim/chroma-lar/installation/chroma3.lar-plib/chroma.simg",
+        output_dir=f"/sdf/data/{os.environ['USER']}/prod_chroma_lar/waveform_map",
+        slurm=dict(
+            partition='ampere',
+            account='neutrino:cider-nu',
+            output=f"/sdf/data/{os.environ['USER']}/prod_chroma_lar/logs/wfmap_%A_%a.log",
+            error=f"/sdf/data/{os.environ['USER']}/prod_chroma_lar/logs/wfmap_%A_%a.log",
+        ),
+    ),
+    perlmutter=dict(
+        container_cmd="shifter --image=deeplearnphysics/larcv2:ub2204-cu121-torch251-larndsim",
+        output_dir=f"/global/cfs/cdirs/dune/users/{os.environ['USER']}/prod_chroma_lar/waveform_map",
+        slurm=dict()
+            account='dune',
+            output=f"/global/cfs/cdirs/dune/users/{os.environ['USER']}/prod_chroma_lar/logs/wfmap_%A_%a.log",
+            error=f"/global/cfs/cdirs/dune/users/{os.environ['USER']}/prod_chroma_lar/logs/wfmap_%A_%a.log",
+            qos='shared',
+            constraint='gpu',
+        )
+    )
+

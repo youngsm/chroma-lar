@@ -45,6 +45,7 @@ def main():
     parser.add_argument('--throttle', type=int, help='Throttle the number of concurrent jobs', default=-1)
     parser.add_argument('--run-job', type=int, help='Run a specific job ID locally for testing', default=None)
     parser.add_argument('--config', type=str, help='Path to the configuration file', default='./waveform_config_3cm.py')
+    parser.add_argument('--site', type=str, help='Slurm parameter set (slac or perlmutter) override in the config file', default=None)
     args = parser.parse_args()
     
     # load the configuration file
@@ -52,6 +53,11 @@ def main():
     config_module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(config_module)
     config = inspect.getattr_static(config_module, "config")
+    site_config = inspect.getattr_static(config_module, "site")
+
+    site = args.site if args.site else config.get("site", "slac")
+    site_config = site_config.get(site)
+    slurm_config = site_config.get("slurm")
 
     # calculate batch size (# positions / job) and total jobs
     batch_size = args.batch_size if args.batch_size else calculate_batch_size(config)
@@ -62,7 +68,7 @@ def main():
     if args.run_job is not None:
         job_id = args.run_job
         start_idx, end_idx = calculate_voxel_indices(job_id, batch_size, config)
-        output_filename = f"{config['output_dir']}/waveform_map_job_{job_id}.h5"
+        output_filename = f"{site_config['output_dir']}/waveform_map_job_{job_id}.h5"
         
         # Get the absolute path to waveform_map_pyrat.py
         current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -97,7 +103,7 @@ def main():
     print(f"  Voxel grid: {nx} × {ny} × {nz} = {total_voxels} voxels")
     print(f"  Photons per voxel: {config['nphotons']:,}")
     print(f"  Detector config: {config['detector_config']}")
-    print(f"  Output directory: {config['output_dir']}")
+    print(f"  Output directory: {site_config['output_dir']}")
     print(f"  Container: {config['container']}")
     
     print("\nJob Distribution:")
@@ -108,10 +114,11 @@ def main():
     print(f"  Total jobs required: {total_jobs}")
     print(f"  Estimated total computation time: {total_jobs * batch_size * config['time_per_voxel']/3600:.1f} GPU-hours")
     
-    # create output directory if it doesn't exist
-    if not os.path.exists(config["output_dir"]):
-        os.makedirs(config["output_dir"])
-    
+        # create output directory if it doesn't exist
+        for d in [site_config['output_dir'],os.path.dirname(slurm_config['output']),os.path.dirname(slurm_config['error'])]:
+        if not os.path.exists(d):
+            os.makedirs(d)
+
     if args.throttle > 0:
         throttle_str = f"%{args.throttle}"
     else:
@@ -127,15 +134,21 @@ def main():
     # create a single slurm job array submission script
     array_script = f"""#!/bin/bash
 #SBATCH --job-name=wfmap_array
-#SBATCH --partition={config["partition"]}
-#SBATCH --account={config["account"]}
-#SBATCH --output={config["output_dir"]}/wfmap_%A_%a.log
-#SBATCH --error={config["output_dir"]}/wfmap_%A_%a.log
 #SBATCH --time={slurm_limit}
 #SBATCH --mem=16G
 #SBATCH --gpus=1
 #SBATCH --cpus-per-gpu=6
 #SBATCH --array=0-{total_jobs - 1}{throttle_str}
+"""
+
+    for skey,sval in slurm_config.items():
+        # ensure no duplication
+        flag = f'#SBATCH --{skey}'
+        if flag in array_script:
+            raise ValueError(f"Duplicate SLURM setting found: {flag}")
+        array_script += f"{flag}={sval}\n"
+
+    array_script += f"""
 
 # Calculate voxel indices based on SLURM_ARRAY_TASK_ID
 job_id=$SLURM_ARRAY_TASK_ID
@@ -149,13 +162,14 @@ if [ $end_idx -gt $total_voxels ]; then
 fi
 
 batch_size=$((end_idx - start_idx))
-output_file="{config['output_dir']}/waveform_map_job_${{job_id}}.h5"
+output_file="{site_config['output_dir']}/waveform_map_job_${{job_id}}.h5"
 
 echo "Processing job $job_id: voxels $start_idx to $((end_idx - 1))"
 echo "Output file: $output_file"
 
 # Run the pyrat command directly
-PYCUDA_CACHE_DIR=/lscratch singularity exec --nv -B /lscratch,/sdf {config["container"]} \\
+export PYCUDA_CACHE_DIR=/lscratch
+{site_config['container_cmd']} \\
     /opt/conda/bin/python {pyrat_script} {waveform_map_script} \\
     --set detector_config {config["detector_config"]} \\
     --evalset voxel_ranges "({config['detector_x_range']}, {config['detector_y_range']}, {config['detector_z_range']})" \\
@@ -167,7 +181,7 @@ PYCUDA_CACHE_DIR=/lscratch singularity exec --nv -B /lscratch,/sdf {config["cont
 """
     
     # Save the array job script
-    array_script_path = f"{config['output_dir']}/wfmap_array_job.sh"
+    array_script_path = f"{site_config['output_dir']}/wfmap_array_job.sh"
     with open(array_script_path, "w") as f:
         f.write(array_script)
     
