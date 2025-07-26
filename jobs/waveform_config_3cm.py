@@ -20,6 +20,7 @@ config = {
 
 site = dict(
     slac=dict(
+        work_dir="$LSCRATCH",
         container_cmd="singularity exec --nv -B /lscratch,/sdf /sdf/home/y/youngsam/sw/dune/sim/chroma-lar/installation/chroma3.lar-plib/chroma.simg",
         output_dir=f"/sdf/data/neutrino/{os.environ['USER']}/prod_chroma_lar/waveform_map",
         slurm=dict(
@@ -30,6 +31,7 @@ site = dict(
         ),
     ),
     perlmutter=dict(
+        work_dir="$PSCRATCH",
         container_cmd="shifter --image=deeplearnphysics/larcv2:ub2204-cu121-torch251-larndsim",
         output_dir=f"/global/cfs/cdirs/dune/users/{os.environ['USER']}/prod_chroma_lar/waveform_map",
         slurm=dict(

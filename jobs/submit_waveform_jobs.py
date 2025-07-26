@@ -151,9 +151,9 @@ def main():
     array_script += f"""
 
 # Calculate voxel indices based on SLURM_ARRAY_TASK_ID
-job_id=$SLURM_ARRAY_TASK_ID
-start_idx=$((job_id * {batch_size}))
-end_idx=$(( (job_id + 1) * {batch_size} ))
+task_id=$SLURM_ARRAY_TASK_ID
+start_idx=$((task_id * {batch_size}))
+end_idx=$(( (task_id + 1) * {batch_size} ))
 
 # Make sure end_idx doesn't exceed total voxels
 total_voxels={total_voxels}
@@ -162,13 +162,19 @@ if [ $end_idx -gt $total_voxels ]; then
 fi
 
 batch_size=$((end_idx - start_idx))
-output_file="{site_config['output_dir']}/waveform_map_job_${{job_id}}.h5"
+
+work_dir={site_config['work_dir']}/chromar_lar_${{SLURM_ARRAY_JOB_ID}}_${{SLURM_ARRAY_TASK_ID}}
+output_file="waveform_map_job_${{SLURM_ARRAY_JOB_ID}}_${{SLURM_ARRAY_TASK_ID}}.h5"
+storage_dir="{site_config['output_dir']}/job_${{SLURM_ARRAY_JOB_ID}}"
+mkdir -p $work_dir $storage_dir
 
 echo "Processing job $job_id: voxels $start_idx to $((end_idx - 1))"
 echo "Output file: $output_file"
 
 # Run the pyrat command directly
-export PYCUDA_CACHE_DIR=/lscratch
+cd $work_dir
+mkdir tmp
+export PYCUDA_CACHE_DIR=$PWD/tmp
 {site_config['container_cmd']} \\
     /opt/conda/bin/python {pyrat_script} {waveform_map_script} \\
     --set detector_config {config["detector_config"]} \\
@@ -178,6 +184,7 @@ export PYCUDA_CACHE_DIR=/lscratch
     --evalset voxel_index_start $start_idx \\
     --evalset batch_size $batch_size \\
     --set output_filename $output_file
+scp $output_file $storage_dir
 """
     
     # Save the array job script
