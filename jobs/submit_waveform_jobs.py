@@ -130,9 +130,12 @@ def main():
     pyrat_script = os.path.join(current_dir, "..", "pyrat")
     
     slurm_limit = str(datetime.timedelta(seconds=config["max_job_time"]+config["slurm_max_job_time_buffer"])) # format: HH:MM:SS
+
+    submit_script_path = f"{site_config['output_dir']}/submit.sh"
+    run_script_path = f"{site_config['output_dir']}/run.sh"
     
     # create a single slurm job array submission script
-    array_script = f"""#!/bin/bash
+    submit_script = f"""#!/bin/bash
 #SBATCH --job-name=wfmap_array
 #SBATCH --time={slurm_limit}
 #SBATCH --mem=16G
@@ -144,11 +147,20 @@ def main():
     for skey,sval in slurm_config.items():
         # ensure no duplication
         flag = f'#SBATCH --{skey}'
-        if flag in array_script:
+        if flag in submit_script:
             raise ValueError(f"Duplicate SLURM setting found: {flag}")
-        array_script += f"{flag}={sval}\n"
+        submit_script += f"{flag}={sval}\n"
 
-    array_script += f"""
+    submit_script += f"""
+
+date
+echo "starting a job for the job ${{SLURM_ARRAY_JOB_ID}} task ${{SLURM_ARRAY_TASK_ID}}"
+{site_config['container_cmd']} {run_script_path}
+echo "done"
+date
+"""
+
+    run_script = f"""#!/bin/bash
 
 # Calculate voxel indices based on SLURM_ARRAY_TASK_ID
 task_id=$SLURM_ARRAY_TASK_ID
@@ -173,10 +185,13 @@ echo "Output file: $output_file"
 
 # Run the pyrat command directly
 cd $work_dir
-mkdir tmp
+echo "Work dir ${{work_dir}}"
+ls $work_dir
+mkdir -p tmp
 export PYCUDA_CACHE_DIR=$PWD/tmp
-{site_config['container_cmd']} \\
-    /opt/conda/bin/python {pyrat_script} {waveform_map_script} \\
+echo "Running chroma"
+date
+/opt/conda/bin/python {pyrat_script} {waveform_map_script} \\
     --set detector_config {config["detector_config"]} \\
     --evalset voxel_ranges "({config['detector_x_range']}, {config['detector_y_range']}, {config['detector_z_range']})" \\
     --evalset voxel_size {config["voxel_size"]} \\
@@ -184,24 +199,30 @@ export PYCUDA_CACHE_DIR=$PWD/tmp
     --evalset voxel_index_start $start_idx \\
     --evalset batch_size $batch_size \\
     --set output_filename $output_file
+date
+echo "Copying the output"
 scp $output_file $storage_dir
+date
+echo "Finished run script"
 """
     
     # Save the array job script
-    array_script_path = f"{site_config['output_dir']}/wfmap_array_job.sh"
-    with open(array_script_path, "w") as f:
-        f.write(array_script)
+    with open(submit_script_path, "w") as f:
+        f.write(submit_script)
+    with open(run_script_path, "w") as f:
+        f.write(run_script)
+        os.chmod(run_script_path,0o774)
     
     print("\nJob Array Submission:")
     if args.dry_run:
         print("  DRY RUN")
-        print(f"  Would create job array script: {array_script_path}")
-        print(f"  Would submit: sbatch {array_script_path}")
+        print(f"  Would create job array script: {submit_script_path}")
+        print(f"  Would submit: sbatch {submit_script_path}")
         print(f"  Job array would create {total_jobs} tasks (0-{total_jobs-1})")
     else:
-        print(f"  Created job array script: {array_script_path}")
+        print(f"  Created job array script: {submit_script_path}")
         print(f"  Submitting job array with {total_jobs} tasks...")
-        result = subprocess.run(f"sbatch {array_script_path}", shell=True, capture_output=True, text=True)
+        result = subprocess.run(f"sbatch {submit_script_path}", shell=True, capture_output=True, text=True)
         
         if result.returncode == 0:
             job_id = result.stdout.strip().split()[-1]
