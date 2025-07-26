@@ -32,7 +32,7 @@ site = dict(
     ),
     perlmutter=dict(
         work_dir="$PSCRATCH",
-        container_cmd="shifter --image=deeplearnphysics/larcv2:ub2204-cu121-torch251-larndsim",
+        container_cmd="shifter --image=deeplearnphysics/simlar:larchroma-2025-07-18",
         output_dir=f"/global/cfs/cdirs/dune/users/{os.environ['USER']}/prod_chroma_lar/waveform_map",
         slurm=dict(
             account='dune',
