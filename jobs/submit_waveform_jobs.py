@@ -104,7 +104,7 @@ def main():
     print(f"  Photons per voxel: {config['nphotons']:,}")
     print(f"  Detector config: {config['detector_config']}")
     print(f"  Output directory: {site_config['output_dir']}")
-    print(f"  Container: {config['container']}")
+    print(f"  Container CMD: {site_config['container_cmd']}")
     
     print("\nJob Distribution:")
     print(f"  Estimated time per voxel: {config['time_per_voxel']} seconds")
@@ -114,8 +114,8 @@ def main():
     print(f"  Total jobs required: {total_jobs}")
     print(f"  Estimated total computation time: {total_jobs * batch_size * config['time_per_voxel']/3600:.1f} GPU-hours")
     
-        # create output directory if it doesn't exist
-        for d in [site_config['output_dir'],os.path.dirname(slurm_config['output']),os.path.dirname(slurm_config['error'])]:
+    # create output directory if it doesn't exist
+    for d in [site_config['output_dir'],os.path.dirname(slurm_config['output']),os.path.dirname(slurm_config['error'])]:
         if not os.path.exists(d):
             os.makedirs(d)
 
