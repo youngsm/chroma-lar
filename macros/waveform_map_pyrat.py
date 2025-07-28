@@ -64,7 +64,7 @@ def __configure__(db):
     db.chroma_photon_tracking = 0
     db.chroma_daq = False
     db.chroma_photons_per_batch = db.nphotons
-    db.chroma_keep_photons_beg = True
+    db.chroma_keep_photons_beg = False
     db.chroma_keep_photons_end = False
     db.chroma_keep_hits = False
     db.chroma_keep_flat_hits = True
