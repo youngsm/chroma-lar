@@ -7,6 +7,8 @@ import subprocess
 import datetime
 import importlib.util
 import inspect
+import pprint
+from chroma_lar.geometry.config_loader import load_config_from_file
 
 def calculate_batch_size(config):
     """Calculate how many voxels can be processed in the given job time"""
@@ -54,6 +56,7 @@ def main():
     spec.loader.exec_module(config_module)
     config = inspect.getattr_static(config_module, "config")
     site_config = inspect.getattr_static(config_module, "site")
+    det_config = load_config_from_file(config["detector_config"])
 
     site = args.site if args.site else config.get("site", "slac")
     site_config = site_config.get(site)
@@ -74,7 +77,12 @@ def main():
         current_dir = os.path.dirname(os.path.abspath(__file__))
         waveform_map_script = os.path.join(current_dir, "..", "macros", "waveform_map_pyrat.py")
         pyrat_script = os.path.join(current_dir, "..", "pyrat")
-        
+        # print config at start of job
+        print("=== SIMULATION CONFIGURATION ===")
+        pprint.pprint(config)
+        print("==================================")
+        print("=== DETECTOR CONFIGURATION ===")
+        pprint.pprint(det_config)
         cmd = f"""
         PYCUDA_CACHE_DIR=/lscratch singularity exec --nv -B /lscratch,/sdf {config["container"]} \\
         /opt/conda/bin/python {pyrat_script} {waveform_map_script} \\
@@ -182,6 +190,18 @@ mkdir -p $work_dir $storage_dir
 
 echo "Processing job $job_id: voxels $start_idx to $((end_idx - 1))"
 echo "Output file: $output_file"
+
+# print config for this job
+echo "=== JOB SCHEDULER CONFIGURATION ==="
+cat <<EOF
+{pprint.pformat(config)}
+EOF
+echo "=================================="
+echo "=== DETECTOR CONFIGURATION ==="
+cat <<EOF
+{pprint.pformat(det_config)}
+EOF
+echo "=================================="
 
 # Run the pyrat command directly
 cd $work_dir
