@@ -49,7 +49,7 @@ def generate_pmt_positions(
     print(f"Total PMT number is {n_pmt_walls * grid_y * grid_z}")
 
     # Generate hexagonal grid coordinates
-    y_side, z_side = np.meshgrid(np.arange(grid_y), np.arange(grid_z))
+    y_side, z_side = np.meshgrid(np.arange(grid_y), np.arange(grid_z), indexing='ij')
     spacing_buffer_y = ly - (grid_y - 1) * spacing_y
     spacing_buffer_z = lz - (grid_z - 1) * spacing_z
     print(f"Spacing buffer in y: {spacing_buffer_y}, z: {spacing_buffer_z}")
