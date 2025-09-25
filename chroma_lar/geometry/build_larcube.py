@@ -141,6 +141,7 @@ def build_detector(
         spacing_y=pmt_spacing,
         spacing_z=pmt_spacing,
         gap_pmt_active=pmt_gap,
+        pmt_radius=pmt_diameter_in/2
     )
 
     # create pmt model
