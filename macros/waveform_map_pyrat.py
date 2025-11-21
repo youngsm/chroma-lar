@@ -57,7 +57,7 @@ def __configure__(db):
     db.voxel_index_start = 0
     db.batch_size = 720
     db.nphotons = 200_000
-    db.wavelength = 128
+    db.wavelength = 450
     db.num_ticks = 1000
     db.max_time = 100
     
@@ -128,6 +128,13 @@ def __simulation_start__(db):
         dtype=np.uint32, # max: a lot more than 65535
         chunks=True
     )
+    db.file.create_dataset(
+        "vis_counts",
+        shape=(0,db.num_pmts),
+        maxshape=(None,db.num_pmts),
+        dtype=np.uint32, # max: a lot more than 65535
+        chunks=True
+    )
     db.current_ev_idx = 0
     db.t_start = time.time()
 
@@ -135,7 +142,7 @@ def __process_event__(db, ev):
     """Called for each generated event"""
     logger.info(f"Processing event {db.current_ev_idx} of {db.batch_size} in {time.time() - db.t_start:.2f} seconds")
     logger.info(f'\t detections: {len(ev.flat_hits)}/{db.nphotons}')
-    unique_channels, counts = np.unique(ev.flat_hits.channel, return_counts=True)
+    unique_channels, flat_counts = np.unique(ev.flat_hits.channel, return_counts=True)
     logger.info(f'\t unique channels: {len(unique_channels)}')
     logger.info(f"\t pos: {db.meta.voxel_to_coord(db.voxel_ids[db.current_ev_idx]).numpy()}")
 
@@ -161,7 +168,14 @@ def __process_event__(db, ev):
     db.file["counts"][-1] = counts
     db.file["voxel_ids"].resize(db.file["voxel_ids"].shape[0] + 1, axis=0)
     db.file["voxel_ids"][-1] = db.voxel_ids[db.current_ev_idx]
-    db.file.flush()
+
+    out_vis_counts = np.zeros(db.num_pmts, dtype=np.uint32)
+    out_vis_counts[unique_channels] = flat_counts.astype(np.uint32)
+    db.file["vis_counts"].resize(db.file["vis_counts"].shape[0] + 1, axis=0)
+    db.file["vis_counts"][-1] = out_vis_counts
+
+    if (db.current_ev_idx + 1) % 10 == 0:
+        db.file.flush()
 
     # increment event index
     db.current_ev_idx += 1

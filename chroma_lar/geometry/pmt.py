@@ -16,7 +16,15 @@ def in2mm(in_value):
 
 
 def generate_pmt_positions(
-    lx, ly, lz, spacing_y, spacing_z, gap_pmt_active, n_pmt_walls=2, pmt_radius=50,
+    lx,
+    ly,
+    lz,
+    spacing_y,
+    spacing_z,
+    gap_pmt_active,
+    n_pmt_walls=2,
+    pmt_radius=50,
+    center=False,
 ):
     """
     Generate PMT positions in a hexagonal grid pattern.
@@ -48,9 +56,9 @@ def generate_pmt_positions(
     grid_z = int(lz / spacing_z) + 1
 
     # Generate hexagonal grid coordinates
-    spacing_buffer_y = ly - (grid_y-1)*spacing_y - 4*pmt_radius
-    spacing_buffer_z = lz - (grid_z-1)*spacing_z - 4*pmt_radius
-    while spacing_buffer_y < spacing_y/2:
+    spacing_buffer_y = ly - (grid_y - 1) * spacing_y - 4 * pmt_radius
+    spacing_buffer_z = lz - (grid_z - 1) * spacing_z - 4 * pmt_radius
+    while spacing_buffer_y < spacing_y / 2:
         grid_y -= 1
         spacing_buffer_y = ly - (grid_y - 1) * spacing_y
     while spacing_buffer_z < 0:
@@ -67,13 +75,16 @@ def generate_pmt_positions(
     y_side = y_side.astype(np.float32)
     z_side = z_side.astype(np.float32)
 
-    
     for i in range(y_side.shape[1]):
         if i % 2 == 1:
             y_side[:, i] += spacing_y / 2 - pmt_radius
 
     y = np.tile(y_side, (n_pmt_walls, 1, 1)).flatten()  # reshape(2, -1)
     z = np.tile(z_side, (n_pmt_walls, 1, 1)).flatten()  # reshape(2, -1)
+
+    if center:
+        y -= y.mean()
+        z -= z.mean()
 
     if n_pmt_walls == 2:
         num_lo_pmt = num_hi_pmt = int(len(y) / 2)
@@ -110,7 +121,7 @@ def split_pmt_profile(
     y_min=65,
     split_threshold=220,
     target_diameter=190,
-    downsample_factor=10,
+    downsample_factor=1,
 ):
     """
     Process a PMT profile by splitting it into top and bottom parts based on diameter criteria.
@@ -169,6 +180,9 @@ def split_pmt_profile(
     profile[:, 1] = profile[:, 1] - y_max  # Y=0 at the top-most point
     y_threshold = y_threshold - y_max
 
+    if downsample_factor > 1:
+        profile = profile[::downsample_factor]
+
     return (
         profile,
         y_threshold,
@@ -187,10 +201,11 @@ def build_r5912_pmt(
     back_surface=None,
     default_optics=None,
     return_individual_solids=False,
+    downsample_factor=1,
 ):
 
     """ returns R5912 PMT solid oriented along [0,1,0]"""
-    profile, y_threshold = split_pmt_profile(downsample_factor=4)
+    profile, y_threshold = split_pmt_profile(downsample_factor=downsample_factor)
 
     if outer_material is None:
         outer_material = default_optics.lar
@@ -239,6 +254,10 @@ def build_r5912_pmt(
         offset_profile[:, 0], offset_profile[:, 1], nsteps
     )
 
+    # note: no surface is given for the outer envelope (glass)!
+    # this means that the glass will be fully transparent, and will
+    # be treated as a regular dielectric, i.e. the photons will be 
+    # undergo refraction/reflection.
     outer_envelope = geometry.Solid(
         outer_envelope_mesh, glass, outer_material, color=0xD0E0E0E0
     )
