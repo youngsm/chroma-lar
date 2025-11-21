@@ -81,8 +81,8 @@ def make_wire_plane(
     idx_max_rel = int(np.ceil(r_max / wire_pitch + 1e-9))
 
     meshes = []
-    base_cyl = make.segmented_cylinder(
-        radius, 1.0, nsteps=nsteps, nsegments=nsegments
+    base_cyl = make.cylinder(
+        radius, 1.0, nsteps=nsteps,
     )  # unit-length cylinder along +Y
 
     # rotation that aligns +Y with direction d→

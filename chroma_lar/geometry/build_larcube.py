@@ -8,7 +8,7 @@ import chroma.make as make
 import chroma.transform as transform
 import chroma.detector as detector
 from chroma.loader import create_geometry_from_obj
-from typing import Literal
+from typing import Literal  # noqa: F401
 
 
 def in2mm(in_value):
@@ -28,10 +28,12 @@ def build_detector(
     pmt_photocathode_surface=None,
     pmt_back_surface=None,
     pmt_glass_material=None,
+    center_pmts=True,
     pmt_spacing=500,  # mm
     pmt_gap=10,  # mm from active volume boundary
     pmt_nsteps=20,  # Tessellation for PMT model
     pmt_diameter_in=8,  # in
+    pmt_downsample_factor=1,  # factor by which to downsample the PMT profile
     # Wire plane parameters
     wire_diameter=0.150,  # mm
     wire_pitch=3.0,  # mm
@@ -69,12 +71,16 @@ def build_detector(
         Dictionary with x, y, z ranges for active volume
     cavity_scale : float
         Scale factor for cavity relative to active volume
+    pmt_center : bool
+        Whether to center the PMTs
     pmt_spacing : float
         Spacing between PMTs in mm
     pmt_gap : float
         Gap between active volume and PMT planes in mm
     pmt_nsteps : int
         Tessellation parameter for PMT model
+    pmt_downsample_factor : int
+        Factor by which to downsample the PMT profile
     wire_diameter : float
         Diameter of wire in mm
     wire_pitch : float
@@ -141,6 +147,8 @@ def build_detector(
         spacing_y=pmt_spacing,
         spacing_z=pmt_spacing,
         gap_pmt_active=pmt_gap,
+        pmt_radius=in2mm(pmt_diameter_in) / 2,
+        center=center_pmts,
     )
 
     # create pmt model
@@ -155,6 +163,7 @@ def build_detector(
         photocathode_surface=pmt_photocathode_surface,
         back_surface=pmt_back_surface,
         default_optics=default_optics,
+        downsample_factor=pmt_downsample_factor,
     )
     if include_pmts:
         # add pmt to detector

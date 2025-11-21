@@ -24,6 +24,10 @@ reflect99 = geometry.Surface("reflect99")
 reflect99.set("reflect_specular", 0.99)
 reflect99.set("absorb", 0.01)
 
+reflect100 = geometry.Surface("reflect100")
+reflect100.set("reflect_specular", 1.0)
+reflect100.set("absorb", 0.0)
+
 glossy_surface = geometry.Surface("glossy_surface")
 glossy_surface.set("reflect_diffuse", 0.5)
 glossy_surface.set("reflect_specular", 0.5)
@@ -175,4 +179,4 @@ reflect0.set("reflect_specular", 0.05)
 perfect_detector = geometry.Surface("perfect_detector")
 perfect_detector.set("detect", 1.0)
 
-__exports__ = ["nonreflective", "reflect0", "reflect00", "reflect90", "reflect99", "holder_surface", "glossy_surface", "SSuprasil", "teflon", "nothing", "quartz", "gold", "MgF2", "steel_surface", "polished_steel_surface", "ceramic_surface", "SiO2_surface", "SiO2_off_surface", "reflect0"]
+__exports__ = ["nonreflective", "reflect0", "reflect00", "reflect90", "reflect99", "holder_surface", "glossy_surface", "SSuprasil", "teflon", "nothing", "quartz", "gold", "MgF2", "steel_surface", "polished_steel_surface", "ceramic_surface", "SiO2_surface", "SiO2_off_surface", "reflect0", "reflect100"]

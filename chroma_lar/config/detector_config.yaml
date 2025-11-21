@@ -11,6 +11,7 @@ TPC:
 
 PMT:
   gap_pmt_active:  10  # mm
-  sensor_spacing: 500  # mm
+  sensor_spacing: 471  # mm
   sensor_radius:   50  # mm
   ce_angle_thres: 0.15 # 1/degree?
+  center_pmts: true

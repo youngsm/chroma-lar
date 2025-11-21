@@ -34,6 +34,7 @@ def get_config():
         "include_cavity": True,
         # PMT parameters
         "include_pmts": True,
+        "center_pmts": yaml_config["PMT"]["center_pmts"],
         "pmt_spacing": yaml_config["PMT"]["sensor_spacing"],  # mm
         "pmt_gap": yaml_config["PMT"]["gap_pmt_active"],  # mm
         "pmt_nsteps": 20,
@@ -50,6 +51,7 @@ def get_config():
         "wire_nsteps": 32,
         "wire_inner_material": db.steel_material,
         "wire_surface": db.polished_steel_surface,
+        "analytic_wires": True,
         # Cathode parameters
         "include_cathode": True,
         "cathode_thickness": 6.0,  # mm
