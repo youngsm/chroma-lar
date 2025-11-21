@@ -1,10 +1,10 @@
 import os
 
 """
-10M: mean = 6.356 s, std = 0.811 s 
-15M: mean = 9.168 s, std = 0.779 s 
-20M: mean = 11.957 s, std = 1.190 s
-25M: mean = 14.880 s, std = 0.727 s
+10M: mean = 6.356 s, std = 0.811 s --> 1596672 vox = 2,819 hours 
+15M: mean = 9.168 s, std = 0.779 s --> 1596672 vox = 4,066 hours
+20M: mean = 11.957 s, std = 1.190 s --> 1596672 vox = 5,303 hours
+25M: mean = 14.880 s, std = 0.727 s --> 1596672 vox = 6,599.5776 hours
 """
 
 # Detector and voxel configuration
