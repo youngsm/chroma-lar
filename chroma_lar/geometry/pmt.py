@@ -51,7 +51,7 @@ def generate_pmt_positions(
     pmt_ids : torch.Tensor
         Tensor containing the IDs of the PMTs.
     """
-
+    
     grid_y = int(ly / spacing_y) + 1
     grid_z = int(lz / spacing_z) + 1
 
@@ -67,13 +67,8 @@ def generate_pmt_positions(
     print(f"Spacing buffer in y: {spacing_buffer_y}, z: {spacing_buffer_z}")
 
     y_side, z_side = np.meshgrid(np.arange(grid_y), np.arange(grid_z), indexing="ij")
-    y_side = (
-        y_side * spacing_y
-        - ly / 2
-        + (spacing_buffer_y / 2 - spacing_y / 4)
-        + pmt_radius
-    )
-    z_side = z_side * spacing_z - lz / 2 + spacing_buffer_z / 2 + 2 * pmt_radius
+    y_side = y_side*spacing_y - ly/2 + (spacing_buffer_y/2 - spacing_y/4) + pmt_radius
+    z_side = z_side*spacing_z - lz/2 + spacing_buffer_z/2 + 2*pmt_radius
 
     print(f"Total PMT number is {n_pmt_walls * grid_y * grid_z}")
 
@@ -121,7 +116,6 @@ def generate_pmt_positions(
     # change to swap between the sides
     pmt_coords = np.stack((x, y, z), axis=-1)
     return pmt_coords, np.arange(pmt_coords.shape[0], dtype=np.int32), normal
-
 
 def split_pmt_profile(
     y_min=65,
