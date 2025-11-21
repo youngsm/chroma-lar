@@ -1,4 +1,12 @@
 import os
+
+"""
+10M: mean = 6.356 s, std = 0.811 s 
+15M: mean = 9.168 s, std = 0.779 s 
+20M: mean = 11.957 s, std = 1.190 s
+25M: mean = 14.880 s, std = 0.727 s
+"""
+
 # Detector and voxel configuration
 config = {
     # Detector dimensions (mm)
@@ -8,12 +16,12 @@ config = {
     # Voxel parameters
     "voxel_size": 30,  # mm
     # Simulation parameters
-    "nphotons": 200_000,
+    "nphotons": 15_000_000,
     "detector_config": "detector_config_reflect_reflect3wires",
     # Job parameters
-    "time_per_voxel": 15,  # seconds per voxel
-    "max_job_time": 3 * 60 * 60,  # 3 hours in seconds
-    "slurm_max_job_time_buffer": 30 * 60,  # 30 minutes in seconds
+    "time_per_voxel": 9.168,  # seconds per voxel
+    "max_job_time": 3 * 60 * 60,  # 2 hours in seconds
+    "slurm_max_job_time_buffer": 2 * 60,  # 2 minutes in seconds
     # Site-specific configuration
     "site": "slac",
 }
