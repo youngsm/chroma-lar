@@ -75,7 +75,7 @@ def main():
         
         # Get the absolute path to waveform_map_pyrat.py
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        waveform_map_script = os.path.join(current_dir, "..", "macros", "waveform_map_pyrat.py")
+        waveform_map_script = os.path.join(current_dir, "..", "macros", "waveform_map_pyrat_32bit.py")
         pyrat_script = os.path.join(current_dir, "..", "pyrat")
         # print config at start of job
         print("=== SIMULATION CONFIGURATION ===")
@@ -134,10 +134,15 @@ def main():
     
     # get the absolute path to the waveform_map_pyrat.py script
     current_dir = os.path.dirname(os.path.abspath(__file__))
-    waveform_map_script = os.path.join(current_dir, "..", "macros", "waveform_map_pyrat.py")
+    waveform_map_script = os.path.join(current_dir, "..", "macros", "waveform_map_pyrat_32bit.py")
     pyrat_script = os.path.join(current_dir, "..", "pyrat")
     
-    slurm_limit = str(datetime.timedelta(seconds=config["max_job_time"]+config["slurm_max_job_time_buffer"])) # format: HH:MM:SS
+    # format time as HH:MM:SS (even for > 24 hours)
+    total_seconds = int(config["max_job_time"]+config["slurm_max_job_time_buffer"])
+    hours = total_seconds // 3600
+    minutes = (total_seconds % 3600) // 60
+    seconds = total_seconds % 60
+    slurm_limit = f"{hours}:{minutes:02d}:{seconds:02d}"
 
     submit_script_path = f"{site_config['output_dir']}/submit.sh"
     run_script_path = f"{site_config['output_dir']}/run.sh"

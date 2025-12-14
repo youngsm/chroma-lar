@@ -19,9 +19,9 @@ config = {
     "nphotons": 15_000_000,
     "detector_config": "detector_config_reflect_reflect3wires",
     # Job parameters
-    "time_per_voxel": 9.168,  # seconds per voxel
-    "max_job_time": 3 * 60 * 60,  # 2 hours in seconds
-    "slurm_max_job_time_buffer": 2 * 60,  # 2 minutes in seconds
+    "time_per_voxel": 10,  # seconds per voxel
+    "max_job_time": 48 * 60 * 60,  # 12 hours in seconds
+    "slurm_max_job_time_buffer": 2 * 60 * 60,  # 2 hours in seconds
     # Site-specific configuration
     "site": "slac",
 }

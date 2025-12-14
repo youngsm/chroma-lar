@@ -79,6 +79,7 @@ def __configure__(db):
     db.chroma_keep_hits = False
     db.chroma_keep_flat_hits = True
     db.chroma_max_steps = 1000
+    db.chroma_use_packed = True  # use float4 packed format for A100 optimization
 
 
 def __define_geometry__(db):
