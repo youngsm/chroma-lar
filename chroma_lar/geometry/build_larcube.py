@@ -7,7 +7,10 @@ import chroma.geometry as geometry
 import chroma.make as make
 import chroma.transform as transform
 import chroma.detector as detector
-from chroma.loader import create_geometry_from_obj
+try:
+    from chroma.loader import create_geometry_from_obj
+except ImportError: # cuda not available
+    create_geometry_from_obj = None
 from typing import Literal  # noqa: F401
 
 
@@ -318,7 +321,7 @@ def build_detector(
                 default_optics=default_optics,
             )
 
-    if flatten:
+    if flatten and create_geometry_from_obj is not None:
         return create_geometry_from_obj(g)
 
     return g

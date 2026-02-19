@@ -4,7 +4,7 @@ import plotly.graph_objects as go
 from chroma.event import SURFACE_DETECT, NO_HIT, NAN_ABORT, SURFACE_ABSORB, BULK_ABSORB
 import numpy as np
 
-def plot_geometry(event, g=None, plot_tracks=False, track_colorscale='Viridis'):
+def plot_geometry(event=None, g=None, plot_tracks=False, track_colorscale='Viridis', bomb_positions=None):
     fig = go.Figure()
 
     if g is not None:
@@ -15,10 +15,11 @@ def plot_geometry(event, g=None, plot_tracks=False, track_colorscale='Viridis'):
             vertices = solid.mesh.vertices  # (M, 3), M<=N
 
             # Convert to PyTorch tensors on GPU
-            vertices_torch = torch.tensor(vertices, device="cuda", dtype=torch.float32)
+            device = "cuda" if torch.cuda.is_available() else "cpu"
+            vertices_torch = torch.tensor(vertices, device=device, dtype=torch.float32)
             try:
-                pos = torch.tensor(g.solid_displacements[i], device="cuda", dtype=torch.float32)
-                rot = torch.tensor(g.solid_rotations[i], device="cuda", dtype=torch.float32)
+                pos = torch.tensor(g.solid_displacements[i], device=device, dtype=torch.float32)
+                rot = torch.tensor(g.solid_rotations[i], device=device, dtype=torch.float32)
             except Exception:
                 pos = None
                 rot = None
@@ -51,6 +52,10 @@ def plot_geometry(event, g=None, plot_tracks=False, track_colorscale='Viridis'):
             # Convert back to numpy for plotting
             vertices = vertices_torch.cpu().numpy()
 
+            solid_name = None
+            if hasattr(g, 'solid_names') and i < len(g.solid_names) and g.solid_names[i] is not None:
+                solid_name = g.solid_names[i]
+            name = solid_name if solid_name else f"Solid {i}"
             fig.add_trace(
                 go.Mesh3d(
                     x=vertices[:, 0],
@@ -61,9 +66,53 @@ def plot_geometry(event, g=None, plot_tracks=False, track_colorscale='Viridis'):
                     k=k_vertices,
                     facecolor=rgb_colors,
                     opacity=0.1,
-                    name=f"Solid {i}",
+                    name=name,
                 )
             )
+
+        if hasattr(g, "wireplanes") and g.wireplanes:
+            for idx, wp in enumerate(g.wireplanes):
+                try:
+                    origin = np.asarray(wp["origin"], dtype=np.float32)
+                    u = np.asarray(wp["u"], dtype=np.float32)
+                    v = np.asarray(wp["v"], dtype=np.float32)
+                    umin = float(wp["umin"])
+                    umax = float(wp["umax"])
+                    vmin = float(wp["vmin"])
+                    vmax = float(wp["vmax"])
+                except Exception:
+                    continue
+                c0 = origin + u * umin + v * vmin
+                c1 = origin + u * umax + v * vmin
+                c2 = origin + u * umax + v * vmax
+                c3 = origin + u * umin + v * vmax
+                vertices_rect = np.vstack([c0, c1, c2, c3])
+                i_idx, j_idx, k_idx = [0, 0], [1, 2], [2, 3]
+                fig.add_trace(
+                    go.Mesh3d(
+                        x=vertices_rect[:, 0],
+                        y=vertices_rect[:, 1],
+                        z=vertices_rect[:, 2],
+                        i=i_idx, j=j_idx, k=k_idx,
+                        color="lightgray", opacity=0.2,
+                        name=f"Wireplane {idx} (wall)",
+                    )
+                )
+
+    if bomb_positions is not None:
+        pos = np.asarray(bomb_positions, dtype=np.float64)
+        if pos.ndim == 2 and pos.shape[1] == 3:
+            fig.add_trace(
+                go.Scatter3d(
+                    x=pos[:, 0],
+                    y=pos[:, 1],
+                    z=pos[:, 2],
+                    mode="markers",
+                    marker=dict(size=2, color="orange", opacity=0.8, symbol="square"),
+                    name="Bomb positions",
+                )
+            )
+
     if event is not None:
         # Plot beginning photons
         fig.add_trace(
@@ -100,86 +149,6 @@ def plot_geometry(event, g=None, plot_tracks=False, track_colorscale='Viridis'):
                 )
             )
 
-            # add simple wall for each analytic wireplane (if present on geometry)
-            if hasattr(g, "wireplanes") and g.wireplanes:
-                for idx, wp in enumerate(g.wireplanes):
-                    try:
-                        origin = np.asarray(wp["origin"], dtype=np.float32)
-                        u = np.asarray(wp["u"], dtype=np.float32)
-                        v = np.asarray(wp["v"], dtype=np.float32)
-                        umin = float(wp["umin"])
-                        umax = float(wp["umax"])
-                        vmin = float(wp["vmin"])
-                        vmax = float(wp["vmax"])
-                    except Exception:
-                        continue
-
-                    # rectangle corners in world coords
-                    c0 = origin + u * umin + v * vmin
-                    c1 = origin + u * umax + v * vmin
-                    c2 = origin + u * umax + v * vmax
-                    c3 = origin + u * umin + v * vmax
-                    vertices_rect = np.vstack([c0, c1, c2, c3])
-
-                    # two triangles covering the rectangle
-                    i_idx = [0, 0]
-                    j_idx = [1, 2]
-                    k_idx = [2, 3]
-
-                    fig.add_trace(
-                        go.Mesh3d(
-                            x=vertices_rect[:, 0],
-                            y=vertices_rect[:, 1],
-                            z=vertices_rect[:, 2],
-                            i=i_idx,
-                            j=j_idx,
-                            k=k_idx,
-                            color="lightgray",
-                            opacity=0.2,
-                            name=f"Wireplane {idx} (wall)",
-                        )
-                    )
-
-            # add simple wall for each analytic wireplane (if present on geometry)
-            if hasattr(g, "wireplanes") and g.wireplanes:
-                for idx, wp in enumerate(g.wireplanes):
-                    try:
-                        origin = np.asarray(wp["origin"], dtype=np.float32)
-                        u = np.asarray(wp["u"], dtype=np.float32)
-                        v = np.asarray(wp["v"], dtype=np.float32)
-                        umin = float(wp["umin"])
-                        umax = float(wp["umax"])
-                        vmin = float(wp["vmin"])
-                        vmax = float(wp["vmax"])
-                    except Exception:
-                        continue
-
-                    # rectangle corners in world coords
-                    c0 = origin + u * umin + v * vmin
-                    c1 = origin + u * umax + v * vmin
-                    c2 = origin + u * umax + v * vmax
-                    c3 = origin + u * umin + v * vmax
-                    vertices_rect = np.vstack([c0, c1, c2, c3])
-
-                    # two triangles covering the rectangle
-                    i_idx = [0, 0]
-                    j_idx = [1, 2]
-                    k_idx = [2, 3]
-
-                    fig.add_trace(
-                        go.Mesh3d(
-                            x=vertices_rect[:, 0],
-                            y=vertices_rect[:, 1],
-                            z=vertices_rect[:, 2],
-                            i=i_idx,
-                            j=j_idx,
-                            k=k_idx,
-                            color="lightgray",
-                            opacity=0.2,
-                            name=f"Wireplane {idx} (wall)",
-                        )
-                    )
-
         # No hit photons
         nohit_mask = (event.photons_end.flags & NO_HIT) == NO_HIT
         if nohit_mask.any():
@@ -191,7 +160,7 @@ def plot_geometry(event, g=None, plot_tracks=False, track_colorscale='Viridis'):
                     mode='markers',
                     marker=dict(
                         size=0.5,
-                        color='blackyellow',
+                        color='black',
                         opacity=0.5
                     ),
                     name='No Hit Photons'
