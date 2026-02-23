@@ -224,6 +224,9 @@ mkdir -p $work_dir $storage_dir
 echo "Processing job $job_id: voxels $start_idx to $((end_idx - 1))"
 echo "Output file: $output_file"
 
+copy_output() {{ if [ -f "$output_file" ]; then echo "Copying output to storage..."; scp "$output_file" "$storage_dir" || true; fi }}
+trap copy_output EXIT
+
 # print config for this job
 echo "=== JOB SCHEDULER CONFIGURATION ==="
 cat <<EOF
@@ -267,9 +270,6 @@ voxel_id_file_arg=""
     --evalset batch_size $batch_size \\
     --set output_filename $output_file \\
     $voxel_id_file_arg
-date
-echo "Copying the output"
-scp $output_file $storage_dir
 date
 echo "Finished run script"
 """
