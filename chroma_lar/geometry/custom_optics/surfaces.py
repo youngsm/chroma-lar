@@ -140,8 +140,8 @@ fr4 = geometry.Surface("FR-4")
 # MgF2.set('absorb', 1.0)
 R = 0.05
 fr4.set("absorb", 1 - R)
-fr4.set("reflect_diffuse", 0.0)
-fr4.set("reflect_specular", R)
+fr4.set("reflect_diffuse", R)
+fr4.set("reflect_specular", 0)
 # ***************************************************************************
 steel_surface = geometry.Surface("steel")  # modified by Jacopo 07/31/2019
 R = 0.12
