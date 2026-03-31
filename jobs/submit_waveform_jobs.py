@@ -193,6 +193,11 @@ def main():
         submit_script += f"{flag}={sval}\n"
 
     submit_script += f"""
+work_dir={site_config['work_dir']}/chroma_lar_${{SLURM_ARRAY_JOB_ID}}_${{SLURM_ARRAY_TASK_ID}}
+output_file="waveform_map_job_${{SLURM_ARRAY_JOB_ID}}_${{SLURM_ARRAY_TASK_ID}}.h5"
+storage_dir="{site_config['output_dir']}/job_${{SLURM_ARRAY_JOB_ID}}"
+copy_output() {{ if [ -f "$work_dir/$output_file" ]; then echo "Copying output to storage..."; cp "$work_dir/$output_file" "$storage_dir/" || true; fi }}
+trap copy_output EXIT
 
 date
 echo "starting a job for the job ${{SLURM_ARRAY_JOB_ID}} task ${{SLURM_ARRAY_TASK_ID}}"
@@ -216,16 +221,13 @@ fi
 
 batch_size=$((end_idx - start_idx))
 
-work_dir={site_config['work_dir']}/chromar_lar_${{SLURM_ARRAY_JOB_ID}}_${{SLURM_ARRAY_TASK_ID}}
+work_dir={site_config['work_dir']}/chroma_lar_${{SLURM_ARRAY_JOB_ID}}_${{SLURM_ARRAY_TASK_ID}}
 output_file="waveform_map_job_${{SLURM_ARRAY_JOB_ID}}_${{SLURM_ARRAY_TASK_ID}}.h5"
 storage_dir="{site_config['output_dir']}/job_${{SLURM_ARRAY_JOB_ID}}"
 mkdir -p $work_dir $storage_dir
 
 echo "Processing job $job_id: voxels $start_idx to $((end_idx - 1))"
 echo "Output file: $output_file"
-
-copy_output() {{ if [ -f "$output_file" ]; then echo "Copying output to storage..."; scp "$output_file" "$storage_dir" || true; fi }}
-trap copy_output EXIT
 
 # print config for this job
 echo "=== JOB SCHEDULER CONFIGURATION ==="
