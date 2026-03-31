@@ -86,7 +86,7 @@ n = iof_l(wvl)
 lar.set("refractive_index", 1.3784) # iof at 128 nm
 
 # --- Rayleigh scattering length (ArDM & DUNE numbers) ----------
-wvl = np.array([128])
+wvl = np.array([128]) # in reality, gaussian around 128 nm with FWHM 10 nm
 rayleigh = np.array([950.0])  # mm
 lar.scattering_length = make_prop(wvl, rayleigh)
 

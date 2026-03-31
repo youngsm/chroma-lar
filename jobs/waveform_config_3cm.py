@@ -1,10 +1,10 @@
 import os
 
 """
-10M: mean = 6.356 s, std = 0.811 s --> 1596672 vox = 2,819 hours 
-15M: mean = 9.168 s, std = 0.779 s --> 1596672 vox = 4,066 hours
+10M: mean =  6.356 s, std = 0.811 s --> 1596672 vox = 2,819 hours 
+15M: mean =  9.168 s, std = 0.779 s --> 1596672 vox = 4,066 hours
 20M: mean = 11.957 s, std = 1.190 s --> 1596672 vox = 5,303 hours
-25M: mean = 14.880 s, std = 0.727 s --> 1596672 vox = 6,599.5776 hours
+25M: mean = 14.880 s, std = 0.727 s --> 1596672 vox = 6,599 hours
 """
 
 # Detector and voxel configuration
@@ -20,8 +20,8 @@ config = {
     "detector_config": "detector_config_reflect_reflect3wires",
     # Job parameters
     "time_per_voxel": 10,  # seconds per voxel
-    "max_job_time": 48 * 60 * 60,  # 12 hours in seconds
-    "slurm_max_job_time_buffer": 2 * 60 * 60,  # 2 hours in seconds
+    "max_job_time": 12 * 60 * 60,  # 12 hours in seconds
+    "slurm_max_job_time_buffer": 1 * 60 * 60,  # 2 hours in seconds
     # Site-specific configuration
     "site": "slac",
 }
@@ -29,7 +29,7 @@ config = {
 site = dict(
     slac=dict(
         work_dir="$LSCRATCH",
-        container_cmd="singularity exec --nv -B /lscratch,/sdf /sdf/home/y/youngsam/sw/dune/sim/chroma-lar/installation/chroma3.lar-plib/chroma.simg",
+        container_cmd="singularity exec --nv -B /lscratch,/sdf /sdf/home/y/youngsam/sw/dune/sim/chroma-lar/installation/chroma3.lar-plib/chroma-lite.simg",
         output_dir=f"/sdf/data/neutrino/{os.environ['USER']}/prod_chroma_lar/waveform_map",
         slurm=dict(
             partition='ampere',

@@ -27,6 +27,7 @@ def get_config():
     db = Database('chroma_lar.geometry.custom_optics')
 
     default_config = {
+        "detector_type": yaml_config.get("detector_type", "wire"),
         # Active volume dimensions
         "active_dimensions": yaml_config["TPC"]["active_volume"],
         # Cavity parameters

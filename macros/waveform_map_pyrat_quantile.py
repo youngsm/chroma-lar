@@ -11,11 +11,14 @@ to preserve ground truth for later validation.
 """
 
 import os
+import sys
+import logging
 import numpy as np
 import h5py
 import time
 
 from chroma.log import logger
+logger.setLevel(logging.INFO)
 from chroma.event import Photons
 
 from chroma_lar.geometry import build_detector_from_config
@@ -142,7 +145,7 @@ def __configure__(db):
     db.voxel_ids_array = None
 
     # Optional audit mode: keep raw hits for every Nth processed voxel.
-    db.audit_every_n_voxels = 10_000 # 0 disables audit storage
+    db.audit_every_n_voxels = 16_000 # 0 disables audit storage
 
     db.chroma_photon_tracking = 0
     db.chroma_daq = False
@@ -157,6 +160,7 @@ def __configure__(db):
 
 def __define_geometry__(db):
     """Returns a chroma Detector or Geometry"""
+    logger.info(f"Building geometry...")
     geometry = build_detector_from_config(
         db.detector_config,
         flatten=True,
@@ -165,6 +169,7 @@ def __define_geometry__(db):
         include_cathode=True,
         include_cavity=True,
     )
+    logger.info(f"Built geometry.")
     db.geometry = geometry
     return geometry
 
@@ -192,6 +197,7 @@ def __simulation_start__(db):
     """Called at the start of the event loop"""
     assert "voxel_ranges" in db, "voxel_ranges must be set"
     assert "voxel_size" in db, "voxel_size must be set"
+    logger.info(f"Initializing simulation...")
 
     db.voxel_shape = (
         (db.voxel_ranges[0][1] - db.voxel_ranges[0][0]) // db.voxel_size,
@@ -325,13 +331,15 @@ def __simulation_start__(db):
 
     db.current_ev_idx = 0
     db.t_start = time.time()
+    
+    logger.info(f"Simulation initialized.")
 
 
 def __process_event__(db, ev):
     """Called for each generated event"""
     elapsed = time.time() - db.t_start
-    print(f"Processing event {db.current_ev_idx} of {db.batch_size} in {elapsed:.2f} seconds")
-    print(f"\t detections: {len(ev.flat_hits)}/{db.nphotons}")
+    logger.info(f"Processing event {db.current_ev_idx} of {db.batch_size} in {elapsed:.2f} seconds")
+    logger.info(f"\t detections: {len(ev.flat_hits)}/{db.nphotons}")
 
     db.t_start = time.time()
 
@@ -342,7 +350,7 @@ def __process_event__(db, ev):
     valid = (channels >= 0) & (channels < db.num_output_channels) & np.isfinite(times)
     dropped = np.count_nonzero(~valid)
     if dropped > 0:
-        print(f"\t dropped hits outside output channel range or invalid time: {dropped}")
+        logger.info(f"\t dropped hits outside output channel range or invalid time: {dropped}")
     times = times[valid]
     channels = channels[valid]
 
@@ -380,6 +388,7 @@ def __process_event__(db, ev):
 
     # Optional audit: store full raw hits for every Nth processed voxel.
     if db.audit_enabled and ((db.current_ev_idx % int(db.audit_every_n_voxels)) == 0):
+        logger.info(f"Storing audit data for voxel {db.voxel_ids[db.current_ev_idx]}")
         audit_offset = db.file["audit_t"].shape[0]
         n = len(times)
 
@@ -410,4 +419,6 @@ def __process_event__(db, ev):
 
 def __simulation_end__(db):
     """Called at the end of the event loop"""
+    logger.info(f"Simulation ended.")
+    logger.info(f"Closing file...")
     db.file.close()
