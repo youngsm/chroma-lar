@@ -130,9 +130,9 @@ gold.set(
 )  # according to https://refractiveindex.info/?shelf=main&book=Au&page=Werner
 gold.thickness = 0.001  # need to verify this with Qidong
 # ***************************************************************************
-# according to https://refractiveindex.info/?shelf=main&book=Cu&page=Hagemann
+# according to https://refractiveindex.info/?shelf=main&book=Cu&page=Werner
 copper = geometry.Surface("copper") # at VUV (128 nm)
-R = 0.14853
+R = 0.22624
 copper.set("absorb", 1 - R)
 copper.set("reflect_specular", R)
 # ***************************************************************************
@@ -192,4 +192,4 @@ reflect0.set("reflect_specular", 0.05)
 perfect_detector = geometry.Surface("perfect_detector")
 perfect_detector.set("detect", 1.0)
 
-__exports__ = ["nonreflective", "reflect0", "reflect00", "reflect90", "reflect99", "holder_surface", "glossy_surface", "SSuprasil", "teflon", "nothing", "quartz", "gold", "MgF2", "fr4", "steel_surface", "polished_steel_surface", "ceramic_surface", "SiO2_surface", "SiO2_off_surface", "reflect0", "reflect100"]
+__exports__ = ["nonreflective", "reflect0", "reflect00", "reflect90", "reflect99", "holder_surface", "glossy_surface", "SSuprasil", "teflon", "nothing", "quartz", "gold", "copper", "MgF2", "fr4", "steel_surface", "polished_steel_surface", "ceramic_surface", "SiO2_surface", "SiO2_off_surface", "reflect0", "reflect100"]
