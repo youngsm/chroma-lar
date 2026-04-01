@@ -130,6 +130,12 @@ gold.set(
 )  # according to https://refractiveindex.info/?shelf=main&book=Au&page=Werner
 gold.thickness = 0.001  # need to verify this with Qidong
 # ***************************************************************************
+# according to https://refractiveindex.info/?shelf=main&book=Cu&page=Hagemann
+copper = geometry.Surface("copper") # at VUV (128 nm)
+R = 0.14853
+copper.set("absorb", 1 - R)
+copper.set("reflect_specular", R)
+# ***************************************************************************
 MgF2 = geometry.Surface("MgF2")
 # MgF2.set('absorb', 1.0)
 MgF2.set("absorb", 0.0)
