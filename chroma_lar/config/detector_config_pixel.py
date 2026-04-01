@@ -46,7 +46,7 @@ def get_config():
         "n_pixels_z": yaml_config["pixel"]["n_pixels_z"],
         "pixel_surface": db.gold,
         "pcb_surface": db.fr4,
-        "pixel_simplified": False,
+        "pixel_simplified": True,
         # Cathode
         "include_cathode": True,
         "cathode_thickness": yaml_config["TPC"]["cathode_thickness"],
