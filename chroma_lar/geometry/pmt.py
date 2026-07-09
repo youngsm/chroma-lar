@@ -8,7 +8,43 @@ import os
 import numpy as np
 import chroma.geometry as geometry
 
-__exports__ = ["generate_pmt_positions", "build_r5912_pmt"]
+__exports__ = ["generate_pmt_positions", "generate_pmt_positions_ywalls",
+               "build_r5912_pmt", "x_reflection_pmt_permutation"]
+
+
+def x_reflection_pmt_permutation(pmt_coords):
+    """
+    Return permutation for x-reflection when using a plib built for one half.
+
+    With n_pmt_walls=2, generate_pmt_positions returns order [all -x PMTs][all +x PMTs]
+    with identical (y,z) order. So PMT i and PMT i + num_lo are at same (y,z), opposite x.
+    If the plib has only the -x wall (81 PMTs), then for a +x source we look up at -x
+    and get data[j] = response at -x PMT j. By symmetry, that equals the response at the
+    +x PMT with the same (y,z) as -x PMT j, so output[j] = data[j] -> identity.
+
+    If the plib has both walls (162 PMTs), then perm[i] = i + num_lo for i < num_lo
+    and perm[i] = i - num_lo for i >= num_lo (half-swap).
+
+    This function infers from pmt_coords and returns the appropriate permutation
+    for mapping plib output to "output channel i = PMT at reflected position of plib PMT i".
+    """
+    pmt_coords = np.asarray(pmt_coords)
+    if pmt_coords.ndim != 2 or pmt_coords.shape[1] != 3:
+        raise ValueError("pmt_coords must be (N, 3)")
+    x = pmt_coords[:, 0]
+    neg = x < 0
+    pos = x > 0
+    n_neg = np.sum(neg)
+    n_pos = np.sum(pos)
+    if n_neg == 0 or n_pos == 0:
+        return np.arange(len(pmt_coords), dtype=np.int64)
+    if n_neg != n_pos:
+        return np.arange(len(pmt_coords), dtype=np.int64)
+    num_lo = n_neg
+    perm = np.arange(len(pmt_coords), dtype=np.int64)
+    perm[:num_lo] = np.arange(num_lo, len(pmt_coords))
+    perm[num_lo:] = np.arange(num_lo)
+    return perm
 
 
 def in2mm(in_value):
@@ -116,6 +152,116 @@ def generate_pmt_positions(
     # change to swap between the sides
     pmt_coords = np.stack((x, y, z), axis=-1)
     return pmt_coords, np.arange(pmt_coords.shape[0], dtype=np.int32), normal
+
+def generate_pmt_positions_ywalls(
+    lx,
+    ly,
+    lz,
+    n_x_half=5,
+    n_z=9,
+    pmt_gap=10.0,
+    pmt_radius=55.626,
+    wall_margin=None,
+    cathode_clearance=None,
+    cathode_thickness=6.0,
+):
+    """
+    Generate PMT positions on +/- Y walls for a pixel TPC configuration.
+
+    Layout: *n_x_half* × *n_z* hexagonal grid per quadrant (+X half of
+    +Y wall), mirrored in X then in Y.  Alternating Z-rows are staggered
+    by half a spacing in X (hex packing).  PMTs that fall outside the
+    available range after the stagger are removed.
+
+    Parameters
+    ----------
+    lx, ly, lz : float
+        Active-volume dimensions (mm).
+    n_x_half : int
+        Number of PMTs in the +X half per Z-row (before hex filtering).
+    n_z : int
+        Number of PMTs along Z.
+    pmt_gap : float
+        Gap from active-volume Y boundary to PMT photocathode plane (mm).
+    pmt_radius : float
+        PMT radius (mm).
+    wall_margin : float or None
+        Minimum distance from PMT center to the outer +/- X and +/- Z wall
+        edges.  If *None*, defaults to ``pmt_radius``.
+    cathode_clearance : float or None
+        Minimum distance from X = 0 to PMT center.  If *None*, computed
+        as ``cathode_thickness / 2 + pmt_radius + 5``.
+    cathode_thickness : float
+        Cathode slab thickness (mm).
+
+    Returns
+    -------
+    positions : (N, 3) float32
+    ids : (N,) int32
+    directions : (N, 3) float32 — unit normals pointing inward
+    """
+    if wall_margin is None:
+        wall_margin = pmt_radius
+    if cathode_clearance is None:
+        cathode_clearance = cathode_thickness / 2 + pmt_radius + 5.0
+
+    # Available range with wall_margin from outer edges, cathode_clearance from center
+    x_min = cathode_clearance + wall_margin
+    x_max = lx / 2 - wall_margin
+    z_min = -lz / 2 + wall_margin
+    z_max = lz / 2 - wall_margin
+
+    # Base grid for one quadrant (+X half of +/- Y wall)
+    x_arr = np.linspace(x_min, x_max, n_x_half)
+    z_arr = np.linspace(z_min, z_max, n_z)
+    spacing_x = (x_max - x_min) / max(n_x_half - 1, 1)
+
+    xx, zz = np.meshgrid(x_arr, z_arr, indexing="ij")
+
+    # Hex stagger: shift alternating Z-rows by half a spacing in X
+    for j in range(n_z):
+        if j % 2 == 1:
+            xx[:, j] += spacing_x / 2
+
+    # Filter positions that exceeded bounds after hex shift
+    x_flat = xx.ravel()
+    z_flat = zz.ravel()
+    keep = (x_flat >= x_min - 1e-6) & (x_flat <= x_max + 1e-6)
+    xz_half = np.column_stack([x_flat[keep], z_flat[keep]])
+    n_half = len(xz_half)
+
+    y_wall = ly / 2 + pmt_gap
+
+    # +X half → +/- Y wall
+    pos_q1 = np.column_stack([
+        xz_half[:, 0], np.full(n_half, y_wall), xz_half[:, 1]])
+
+    # Mirror in X → -X half of +/- Y wall
+    pos_q2 = pos_q1.copy()
+    pos_q2[:, 0] *= -1
+
+    # Mirror in Y → +/- Y wall copies of each quadrant
+    pos_q3 = pos_q1.copy();  pos_q3[:, 1] *= -1   # +X, -Y wall
+    pos_q4 = pos_q2.copy();  pos_q4[:, 1] *= -1   # -X, -Y wall
+
+    dir_py = np.tile([0.0, -1.0, 0.0], (n_half, 1)).astype(np.float32)
+    dir_my = np.tile([0.0,  1.0, 0.0], (n_half, 1)).astype(np.float32)
+
+    # Order: first half = +X side (both walls), second half = -X side (both walls)
+    # PMT i and PMT i + N/2 share the same (|x|, y, z) with x sign flipped.
+    pos_plus_x  = np.vstack([pos_q1, pos_q3])   # +X side: +/- Y wall, then +/- Y wall
+    pos_minus_x = np.vstack([pos_q2, pos_q4])   # -X side: same order
+    dir_plus_x  = np.vstack([dir_py, dir_my])
+    dir_minus_x = np.vstack([dir_py, dir_my])
+
+    positions  = np.vstack([pos_plus_x, pos_minus_x]).astype(np.float32)
+    directions = np.vstack([dir_plus_x, dir_minus_x]).astype(np.float32)
+    ids = np.arange(len(positions), dtype=np.int32)
+
+    print(f"Total PMT number is {len(positions)}")
+
+    return positions, ids, directions
+
 
 def split_pmt_profile(
     y_min=65,

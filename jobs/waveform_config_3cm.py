@@ -19,11 +19,11 @@ config = {
     "nphotons": 15_000_000,
     "detector_config": "detector_config_reflect_reflect3wires",
     # Job parameters
-    "time_per_voxel": 9.168,  # seconds per voxel
-    "max_job_time": 3 * 60 * 60,  # 2 hours in seconds
-    "slurm_max_job_time_buffer": 2 * 60,  # 2 minutes in seconds
+    "time_per_voxel": 10,  # seconds per voxel
+    "max_job_time": 8 * 60 * 60,  # 12 hours in seconds
+    "slurm_max_job_time_buffer": 2 * 60 * 60,  # 2 hours in seconds
     # Site-specific configuration
-    "site": "slac",
+    "site": "perlmutter",
 }
 
 site = dict(
@@ -41,11 +41,11 @@ site = dict(
     perlmutter=dict(
         work_dir="$PSCRATCH",
         container_cmd="shifter --image=deeplearnphysics/simlar:larchroma-2025-07-18",
-        output_dir=f"/global/cfs/cdirs/dune/users/{os.environ['USER']}/prod_chroma_lar/waveform_map",
+        output_dir=f"/global/cfs/cdirs/m5238/users/{os.environ['USER']}/prod_chroma_lar/waveform_map",
         slurm=dict(
-            account='dune',
-            output=f"/global/cfs/cdirs/dune/users/{os.environ['USER']}/prod_chroma_lar/logs/wfmap_%A_%a.log",
-            error=f"/global/cfs/cdirs/dune/users/{os.environ['USER']}/prod_chroma_lar/logs/wfmap_%A_%a.log",
+            account='m5238_g',
+            output=f"/global/cfs/cdirs/m5238/users/{os.environ['USER']}/prod_chroma_lar/logs/wfmap_%A_%a.log",
+            error=f"/global/cfs/cdirs/m5238/users/{os.environ['USER']}/prod_chroma_lar/logs/wfmap_%A_%a.log",
             qos='shared',
             constraint='gpu',
         )

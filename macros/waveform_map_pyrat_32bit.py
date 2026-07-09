@@ -13,7 +13,6 @@ import h5py
 import time
 
 from chroma.log import logger
-logger.setLevel(logging.INFO)
 from chroma.event import Photons
 
 from chroma_lar.geometry import build_detector_from_config
@@ -71,6 +70,10 @@ def __configure__(db):
     db.num_ticks = 1000
     db.max_time = 100
     
+    # voxel subset mode: path to .npy file containing voxel IDs to simulate
+    db.voxel_id_file = None
+    db.voxel_ids_array = None  # loaded array of voxel IDs
+    
     db.chroma_photon_tracking = 0
     db.chroma_daq = False
     db.chroma_photons_per_batch = db.nphotons
@@ -79,6 +82,7 @@ def __configure__(db):
     db.chroma_keep_hits = False
     db.chroma_keep_flat_hits = True
     db.chroma_max_steps = 1000
+    db.chroma_use_packed = True  # use float4 packed format for A100 optimization
 
 
 def __define_geometry__(db):
@@ -100,7 +104,16 @@ def __event_generator__(db):
     convert to a chroma Event)."""
     meta = VoxelMeta(shape=db.voxel_shape, ranges=db.voxel_ranges)
     db.meta = meta
-    db.voxel_ids = range(db.voxel_index_start, db.voxel_index_start + db.batch_size)
+    
+    # determine which voxel IDs to simulate
+    if db.voxel_ids_array is not None:
+        # subset mode: slice the loaded array
+        end_idx = min(db.voxel_index_start + db.batch_size, len(db.voxel_ids_array))
+        db.voxel_ids = db.voxel_ids_array[db.voxel_index_start:end_idx]
+    else:
+        # full grid mode: sequential indices
+        db.voxel_ids = range(db.voxel_index_start, db.voxel_index_start + db.batch_size)
+    
     for idx in db.voxel_ids:
         pos = meta.voxel_to_coord(idx).numpy()
         yield sample_photon_bomb(db.nphotons, pos, voxel_size=db.voxel_size, wavelength=db.wavelength)
@@ -118,6 +131,28 @@ def __simulation_start__(db):
         (db.voxel_ranges[2][1] - db.voxel_ranges[2][0]) // db.voxel_size,
     )
     db.num_pmts = db.geometry.num_channels()
+    
+    # load voxel IDs from file if specified (subset mode)
+    if db.voxel_id_file is not None:
+        if not os.path.exists(db.voxel_id_file):
+            raise FileNotFoundError(f"Voxel ID file not found: {db.voxel_id_file}")
+        
+        logger.info(f"Loading voxel IDs from {db.voxel_id_file}")
+        db.voxel_ids_array = np.load(db.voxel_id_file).astype(np.int32)
+        
+        if db.voxel_ids_array.ndim != 1:
+            raise ValueError(f"Voxel ID array must be 1D, got shape {db.voxel_ids_array.shape}")
+        
+        # validate voxel IDs are within valid range
+        total_voxels = db.voxel_shape[0] * db.voxel_shape[1] * db.voxel_shape[2]
+        if np.any(db.voxel_ids_array < 0) or np.any(db.voxel_ids_array >= total_voxels):
+            raise ValueError(f"Voxel IDs must be in range [0, {total_voxels}), found min={np.min(db.voxel_ids_array)}, max={np.max(db.voxel_ids_array)}")
+        
+        logger.info(f"Loaded {len(db.voxel_ids_array)} voxel IDs (subset mode)")
+        logger.info(f"This job will process voxels {db.voxel_index_start} to {min(db.voxel_index_start + db.batch_size, len(db.voxel_ids_array))-1}")
+    else:
+        logger.info(f"Using full grid mode: {db.voxel_shape} = {db.voxel_shape[0] * db.voxel_shape[1] * db.voxel_shape[2]} voxels")
+        logger.info(f"This job will process voxels {db.voxel_index_start} to {db.voxel_index_start + db.batch_size - 1}")
 
     # create h5 file
     if os.path.exists(db.output_filename):
@@ -134,7 +169,7 @@ def __simulation_start__(db):
         maxshape=(None, num_channels*db.num_ticks_early),
         dtype=np.uint32, 
         chunks=True
-    )
+    )-
     db.file.create_dataset(
         "counts_late",
         shape=(0, num_channels*(db.num_ticks - db.num_ticks_early)),
@@ -161,11 +196,11 @@ def __simulation_start__(db):
 
 def __process_event__(db, ev):
     """Called for each generated event"""
-    logger.info(f"Processing event {db.current_ev_idx} of {db.batch_size} in {time.time() - db.t_start:.2f} seconds")
-    logger.info(f'\t detections: {len(ev.flat_hits)}/{db.nphotons}')
+    print(f"Processing event {db.current_ev_idx} of {db.batch_size} in {time.time() - db.t_start:.2f} seconds")
+    print(f'\t detections: {len(ev.flat_hits)}/{db.nphotons}')
     unique_channels, flat_counts = np.unique(ev.flat_hits.channel, return_counts=True)
-    logger.info(f'\t unique channels: {len(unique_channels)}')
-    logger.info(f"\t pos: {db.meta.voxel_to_coord(db.voxel_ids[db.current_ev_idx]).numpy()}")
+    print(f'\t unique channels: {len(unique_channels)}')
+    print(f"\t pos: {db.meta.voxel_to_coord(db.voxel_ids[db.current_ev_idx]).numpy()}")
 
     db.t_start = time.time()
     
@@ -181,7 +216,7 @@ def __process_event__(db, ev):
 
     counts_early = counts_2d[:, :db.num_ticks_early].flatten()
     counts_late = counts_2d[:, db.num_ticks_early:].flatten()
-    logger.info(f"\t counts: {np.sum(counts_2d)}")
+    print(f"\t counts: {np.sum(counts_2d)}")
 
     # Early counts: uint32
     if np.any(counts_early > MAX_UINT32):

@@ -116,8 +116,8 @@ quartz.set("detect", 0)
 # quartz.set('reflect_diffuse', 0)
 # quartz.transmissive = 1
 # ***************************************************************************
-gold = geometry.Surface("gold")
-R = 0.29981
+gold = geometry.Surface("gold") # at VUV (128 nm)
+R =  0.24141
 gold.set(
     "absorb", 1 - R
 )  # unclear if this is necessary since the extinction coefficient k and the thickness are provided
@@ -126,15 +126,28 @@ gold.set(
 )  # according to https://refractiveindex.info/?shelf=main&book=Au&page=Werner for an angle of 0 degrees
 gold.set("eta", 0.0)
 gold.set(
-    "k", 1.5186
+    "k", 1.2196
 )  # according to https://refractiveindex.info/?shelf=main&book=Au&page=Werner
 gold.thickness = 0.001  # need to verify this with Qidong
+# ***************************************************************************
+# according to https://refractiveindex.info/?shelf=main&book=Cu&page=Werner
+copper = geometry.Surface("copper") # at VUV (128 nm)
+R = 0.22624
+copper.set("absorb", 1 - R)
+copper.set("reflect_specular", R)
 # ***************************************************************************
 MgF2 = geometry.Surface("MgF2")
 # MgF2.set('absorb', 1.0)
 MgF2.set("absorb", 0.0)
 MgF2.set("reflect_diffuse", 0.0)
 MgF2.set("reflect_specular", 1.0)
+# ***************************************************************************
+fr4 = geometry.Surface("FR-4")
+# MgF2.set('absorb', 1.0)
+R = 0.05
+fr4.set("absorb", 1 - R)
+fr4.set("reflect_diffuse", R)
+fr4.set("reflect_specular", 0)
 # ***************************************************************************
 steel_surface = geometry.Surface("steel")  # modified by Jacopo 07/31/2019
 R = 0.12
@@ -179,4 +192,4 @@ reflect0.set("reflect_specular", 0.05)
 perfect_detector = geometry.Surface("perfect_detector")
 perfect_detector.set("detect", 1.0)
 
-__exports__ = ["nonreflective", "reflect0", "reflect00", "reflect90", "reflect99", "holder_surface", "glossy_surface", "SSuprasil", "teflon", "nothing", "quartz", "gold", "MgF2", "steel_surface", "polished_steel_surface", "ceramic_surface", "SiO2_surface", "SiO2_off_surface", "reflect0", "reflect100"]
+__exports__ = ["nonreflective", "reflect0", "reflect00", "reflect90", "reflect99", "holder_surface", "glossy_surface", "SSuprasil", "teflon", "nothing", "quartz", "gold", "copper", "MgF2", "fr4", "steel_surface", "polished_steel_surface", "ceramic_surface", "SiO2_surface", "SiO2_off_surface", "reflect0", "reflect100"]

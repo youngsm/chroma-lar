@@ -16,6 +16,13 @@ def calculate_batch_size(config):
 
 def calculate_total_voxels(config):
     """Calculate the total number of voxels in the detector"""
+    # if voxel_id_file is specified, load voxel count from file
+    if config.get("voxel_id_file") is not None:
+        import numpy as np
+        voxel_ids = np.load(config["voxel_id_file"])
+        return len(voxel_ids), None, None, None
+    
+    # otherwise, calculate from grid dimensions
     x_size = abs(config["detector_x_range"][1] - config["detector_x_range"][0])
     y_size = abs(config["detector_y_range"][1] - config["detector_y_range"][0])
     z_size = abs(config["detector_z_range"][1] - config["detector_z_range"][0])
@@ -48,6 +55,8 @@ def main():
     parser.add_argument('--run-job', type=int, help='Run a specific job ID locally for testing', default=None)
     parser.add_argument('--config', type=str, help='Path to the configuration file', default='./waveform_config_3cm.py')
     parser.add_argument('--site', type=str, help='Slurm parameter set (slac or perlmutter) override in the config file', default=None)
+    parser.add_argument('--voxel-id-file', type=str, help='Path to .npy file containing voxel IDs to simulate', default=None)
+    parser.add_argument('--macro', type=str, help='Macro filename (under macros/) to use, overrides config', default=None)
     args = parser.parse_args()
     
     # load the configuration file
@@ -58,6 +67,18 @@ def main():
     site_config = inspect.getattr_static(config_module, "site")
     det_config = load_config_from_file(config["detector_config"])
 
+    # override voxel_id_file from command line if provided
+    if args.voxel_id_file is not None:
+        config["voxel_id_file"] = args.voxel_id_file
+    if "voxel_id_file" not in config:
+        config["voxel_id_file"] = None
+
+    # macro selection: command-line override > config > default
+    if args.macro is not None:
+        config["macro"] = args.macro
+    elif "macro" not in config:
+        config["macro"] = "waveform_map_pyrat_32bit.py"
+
     site = args.site if args.site else config.get("site", "slac")
     site_config = site_config.get(site)
     slurm_config = site_config.get("slurm")
@@ -65,6 +86,8 @@ def main():
     # calculate batch size (# positions / job) and total jobs
     batch_size = args.batch_size if args.batch_size else calculate_batch_size(config)
     total_voxels, nx, ny, nz = calculate_total_voxels(config)
+    # in subset mode don't create more work than there are voxels
+    batch_size = min(batch_size, total_voxels)
     total_jobs = math.ceil(total_voxels / batch_size)
     
     # try running a specific job locally for testing
@@ -73,9 +96,8 @@ def main():
         start_idx, end_idx = calculate_voxel_indices(job_id, batch_size, config)
         output_filename = f"{site_config['output_dir']}/waveform_map_job_{job_id}.h5"
         
-        # Get the absolute path to waveform_map_pyrat.py
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        waveform_map_script = os.path.join(current_dir, "..", "macros", "waveform_map_pyrat.py")
+        waveform_map_script = os.path.join(current_dir, "..", "macros", config["macro"])
         pyrat_script = os.path.join(current_dir, "..", "pyrat")
         # print config at start of job
         print("=== SIMULATION CONFIGURATION ===")
@@ -83,6 +105,7 @@ def main():
         print("==================================")
         print("=== DETECTOR CONFIGURATION ===")
         pprint.pprint(det_config)
+        voxel_id_arg = f'-s voxel_id_file {config["voxel_id_file"]}' if config.get("voxel_id_file") else ''
         cmd = f"""
         PYCUDA_CACHE_DIR=/lscratch singularity exec --nv -B /lscratch,/sdf {config["container"]} \\
         /opt/conda/bin/python {pyrat_script} {waveform_map_script} \\
@@ -92,7 +115,8 @@ def main():
             -es nphotons {config["nphotons"]} \\
             -es voxel_index_start {start_idx} \\
             -es batch_size {end_idx - start_idx} \\
-            -s output_filename {output_filename}
+            -s output_filename {output_filename} \\
+            {voxel_id_arg}
         """
         
         print(f"Running job {job_id} locally:")
@@ -108,7 +132,12 @@ def main():
     print("Configuration Summary:")
     print(f"  Detector dimensions: X={config['detector_x_range']}, Y={config['detector_y_range']}, Z={config['detector_z_range']}")
     print(f"  Voxel size: {config['voxel_size']}mm")
-    print(f"  Voxel grid: {nx} × {ny} × {nz} = {total_voxels} voxels")
+    
+    if config.get("voxel_id_file") is not None:
+        print(f"  Voxel subset mode: {total_voxels} voxels from {config['voxel_id_file']}")
+    else:
+        print(f"  Voxel grid: {nx} × {ny} × {nz} = {total_voxels} voxels")
+    
     print(f"  Photons per voxel: {config['nphotons']:,}")
     print(f"  Detector config: {config['detector_config']}")
     print(f"  Output directory: {site_config['output_dir']}")
@@ -132,12 +161,16 @@ def main():
     else:
         throttle_str = ""
     
-    # get the absolute path to the waveform_map_pyrat.py script
     current_dir = os.path.dirname(os.path.abspath(__file__))
-    waveform_map_script = os.path.join(current_dir, "..", "macros", "waveform_map_pyrat.py")
+    waveform_map_script = os.path.join(current_dir, "..", "macros", config["macro"])
     pyrat_script = os.path.join(current_dir, "..", "pyrat")
     
-    slurm_limit = str(datetime.timedelta(seconds=config["max_job_time"]+config["slurm_max_job_time_buffer"])) # format: HH:MM:SS
+    # format time as HH:MM:SS (even for > 24 hours)
+    total_seconds = int(config["max_job_time"]+config["slurm_max_job_time_buffer"])
+    hours = total_seconds // 3600
+    minutes = (total_seconds % 3600) // 60
+    seconds = total_seconds % 60
+    slurm_limit = f"{hours}:{minutes:02d}:{seconds:02d}"
 
     submit_script_path = f"{site_config['output_dir']}/submit.sh"
     run_script_path = f"{site_config['output_dir']}/run.sh"
@@ -160,6 +193,11 @@ def main():
         submit_script += f"{flag}={sval}\n"
 
     submit_script += f"""
+work_dir={site_config['work_dir']}/chroma_lar_${{SLURM_ARRAY_JOB_ID}}_${{SLURM_ARRAY_TASK_ID}}
+output_file="waveform_map_job_${{SLURM_ARRAY_JOB_ID}}_${{SLURM_ARRAY_TASK_ID}}.h5"
+storage_dir="{site_config['output_dir']}/job_${{SLURM_ARRAY_JOB_ID}}"
+copy_output() {{ if [ -f "$work_dir/$output_file" ]; then echo "Copying output to storage..."; cp "$work_dir/$output_file" "$storage_dir/" || true; fi }}
+trap copy_output EXIT
 
 date
 echo "starting a job for the job ${{SLURM_ARRAY_JOB_ID}} task ${{SLURM_ARRAY_TASK_ID}}"
@@ -183,7 +221,7 @@ fi
 
 batch_size=$((end_idx - start_idx))
 
-work_dir={site_config['work_dir']}/chromar_lar_${{SLURM_ARRAY_JOB_ID}}_${{SLURM_ARRAY_TASK_ID}}
+work_dir={site_config['work_dir']}/chroma_lar_${{SLURM_ARRAY_JOB_ID}}_${{SLURM_ARRAY_TASK_ID}}
 output_file="waveform_map_job_${{SLURM_ARRAY_JOB_ID}}_${{SLURM_ARRAY_TASK_ID}}.h5"
 storage_dir="{site_config['output_dir']}/job_${{SLURM_ARRAY_JOB_ID}}"
 mkdir -p $work_dir $storage_dir
@@ -211,6 +249,20 @@ mkdir -p tmp
 export PYCUDA_CACHE_DIR=$PWD/tmp
 echo "Running chroma"
 date
+
+# Build pyrat command with optional voxel_id_file argument"""
+    
+    # add voxel_id_file parameter if specified
+    if config.get("voxel_id_file") is not None:
+        run_script += f"""
+voxel_id_file_arg="--set voxel_id_file {config['voxel_id_file']}"
+"""
+    else:
+        run_script += """
+voxel_id_file_arg=""
+"""
+    
+    run_script += f"""
 /opt/conda/bin/python {pyrat_script} {waveform_map_script} \\
     --set detector_config {config["detector_config"]} \\
     --evalset voxel_ranges "({config['detector_x_range']}, {config['detector_y_range']}, {config['detector_z_range']})" \\
@@ -218,10 +270,8 @@ date
     --evalset nphotons {config["nphotons"]} \\
     --evalset voxel_index_start $start_idx \\
     --evalset batch_size $batch_size \\
-    --set output_filename $output_file
-date
-echo "Copying the output"
-scp $output_file $storage_dir
+    --set output_filename $output_file \\
+    $voxel_id_file_arg
 date
 echo "Finished run script"
 """

@@ -35,15 +35,17 @@ def gen_rot(a: np.ndarray, b: np.ndarray) -> np.ndarray:
             orthogonal_vector = np.array([0, 1, 0])
         v = np.cross(a, orthogonal_vector)
         v = v / np.linalg.norm(v)
-        v_skew = np.array([[    0, -v[2],  v[1]],
-                           [ v[2],     0, -v[0]],
-                           [-v[1],  v[0],     0]])
+        v_x, v_y, v_z = v
+        v_skew = np.array([[    0, -v_z,  v_y],
+                           [ v_z,     0, -v_x],
+                           [-v_y,  v_x,     0]])
         return -np.identity(3) + 2 * np.dot(v[:, None], v[None, :])
     
     s = np.linalg.norm(v)
-    v_skew = np.array([[    0, -v[2],  v[1]],
-                       [ v[2],     0, -v[0]],
-                       [-v[1],  v[0],     0]])
+    v_x, v_y, v_z = v
+    v_skew = np.array([[    0, -v_z,  v_y],
+                       [ v_z,     0, -v_x],
+                       [-v_y,  v_x,     0]])
     I = np.eye(3)
     R = I + v_skew + np.dot(v_skew, v_skew) * ((1 - c) / (s ** 2))
     return R

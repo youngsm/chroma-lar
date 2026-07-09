@@ -1,3 +1,5 @@
+detector_type: wire
+
 LAr:
   density: 1.396 # g/cm^3
 
