@@ -19,8 +19,9 @@ import time
 
 from chroma.log import logger
 logger.setLevel(logging.INFO)
-from chroma.event import Photons
+from chroma.event import Event, Photons
 
+from chroma_lar.generator import device_photons
 from chroma_lar.geometry import build_detector_from_config
 from photonlib.meta import VoxelMeta
 
@@ -72,22 +73,46 @@ def _parse_dtype(dtype_name):
     return dtype_map[dtype_name]
 
 
-def _quantiles_from_sorted_samples(sorted_samples, u_grid):
-    n = sorted_samples.size
-    if n == 0:
-        return None
-    if n == 1:
-        return np.full(u_grid.shape, sorted_samples[0], dtype=np.float64)
-
-    # Linear interpolation between adjacent order statistics.
-    idxf = u_grid * (n - 1)
+def _quantiles_from_sorted_segments(t_sorted, starts, n, u_grid):
+    """Quantiles Q(u) of the sorted samples t_sorted[starts[i]:starts[i] + n[i]]
+    for every i (all n >= 1), by linear interpolation between adjacent order
+    statistics; one sample gives that sample for every u."""
+    m = n[:, None]
+    idxf = u_grid * (m - 1)
     i0 = np.floor(idxf).astype(np.int64)
-    i1 = np.minimum(i0 + 1, n - 1)
+    i1 = np.minimum(i0 + 1, m - 1)
     alpha = idxf - i0
-    return (1.0 - alpha) * sorted_samples[i0] + alpha * sorted_samples[i1]
+    base = starts[:, None]
+    q = (1.0 - alpha) * t_sorted[base + i0] + alpha * t_sorted[base + i1]
+    single = n == 1
+    q[single] = t_sorted[starts[single]][:, None]
+    return q
+
+
+def _sort_by_channel_then_time(times, channels):
+    """(times, channels) sorted by channel, then time.
+
+    Chroma's hit times are float32 values: then one sort of 64-bit keys
+    (channel, order-preserving bits of the float32 time) does it; otherwise
+    np.lexsort.
+    """
+    t32 = times.astype(np.float32)
+    if not np.array_equal(t32, times):
+        order = np.lexsort((times, channels))
+        return times[order], channels[order]
+    bits = t32.view(np.uint32)
+    ordered = np.where(bits & 0x80000000, ~bits, bits | 0x80000000)
+    keys = (channels.astype(np.uint64) << np.uint64(32)) | ordered.astype(np.uint64)
+    keys.sort()
+    ordered = (keys & np.uint64(0xFFFFFFFF)).astype(np.uint32)
+    bits = np.where(ordered & 0x80000000, ordered ^ 0x80000000, ~ordered).astype(np.uint32)
+    return bits.view(np.float32).astype(np.float64), (keys >> np.uint64(32)).astype(channels.dtype)
 
 
 def _compute_yield_and_quantiles_and_t0(times, channels, num_channels, u_grid, time_clip_max=None):
+    """Per-channel detected-photon counts, first hit times and time quantiles,
+    for all channels at once (the same float64 operations on the same sorted
+    samples as computing them channel by channel)."""
     yield_counts = np.bincount(channels, minlength=num_channels).astype(np.uint32)
     q = np.full((num_channels, u_grid.shape[0]), np.nan, dtype=np.float64)
     t0 = np.full((num_channels,), np.nan, dtype=np.float64)
@@ -95,27 +120,39 @@ def _compute_yield_and_quantiles_and_t0(times, channels, num_channels, u_grid, t
     if times.size == 0:
         return yield_counts, q, t0
 
-    # Group by channel without repeated boolean masks.
-    order = np.argsort(channels, kind="stable")
-    ch_sorted = channels[order]
-    t_sorted = times[order]
-    unique_ch, start_idx, counts = np.unique(ch_sorted, return_index=True, return_counts=True)
+    # Sorted by channel, then time: each channel's samples are one sorted segment.
+    t_sorted, ch_sorted = _sort_by_channel_then_time(times, channels)
+    counts = np.bincount(channels, minlength=num_channels)
+    starts = np.cumsum(counts) - counts
+    hit = counts > 0
+    t0[hit] = t_sorted[starts[hit]]
 
-    for ch, start, count in zip(unique_ch, start_idx, counts):
-        end = start + count
-        t_ch_all = t_sorted[start:end]
-        t0[ch] = np.min(t_ch_all)
-        t_ch = t_ch_all
-        if time_clip_max is not None:
-            t_ch = t_ch_all[t_ch_all <= time_clip_max]
-        if t_ch.size == 0:
-            continue
-        t_ch = np.sort(t_ch)
-        q_ch = _quantiles_from_sorted_samples(t_ch, u_grid)
-        if q_ch is not None:
-            q[ch] = q_ch
+    # The quantiles use the whole segment, or its prefix up to time_clip_max.
+    if time_clip_max is None:
+        n = counts
+    else:
+        n = np.bincount(ch_sorted[t_sorted <= time_clip_max], minlength=num_channels)
+    use = np.flatnonzero(n > 0)
+    if use.size:
+        q[use] = _quantiles_from_sorted_segments(t_sorted, starts[use], n[use], u_grid)
 
     return yield_counts, q, t0
+
+
+_ROW_DATASETS = ("yield_counts", "quantiles", "voxel_id", "t0", "pos")
+
+
+def _write_pending(db):
+    """Append the buffered per-voxel rows to their datasets and flush."""
+    n = len(db.pending["voxel_id"])
+    if n == 0:
+        return
+    for name in _ROW_DATASETS:
+        ds = db.file[name]
+        ds.resize(ds.shape[0] + n, axis=0)
+        ds[-n:] = np.asarray(db.pending[name], dtype=ds.dtype)
+        db.pending[name] = []
+    db.file.flush()
 
 
 def __configure__(db):
@@ -147,9 +184,16 @@ def __configure__(db):
     # Optional audit mode: keep raw hits for every Nth processed voxel.
     db.audit_every_n_voxels = 16_000 # 0 disables audit storage
 
+    # Draw photons on the GPU when chroma runs on the Triton backend
+    # (None: automatic; False: numpy on the host).
+    db.photons_on_device = None
+    db.flush_every = 10
+
     db.chroma_photon_tracking = 0
     db.chroma_daq = False
-    db.chroma_photons_per_batch = db.nphotons
+    # At least this many photons per GPU launch (voxels are batched up to it;
+    # a voxel with more photons is one batch).
+    db.chroma_photons_per_batch = 5_000_000
     db.chroma_keep_photons_beg = False
     db.chroma_keep_photons_end = False
     db.chroma_keep_hits = False
@@ -186,11 +230,27 @@ def __event_generator__(db):
     else:
         db.voxel_ids = range(db.voxel_index_start, db.voxel_index_start + db.batch_size)
 
-    for idx in db.voxel_ids:
-        pos = meta.voxel_to_coord(idx).numpy()
-        yield sample_photon_bomb(
-            db.nphotons, pos, voxel_size=db.voxel_size, wavelength=db.wavelength
-        )
+    on_device = device_photons.available() if db.photons_on_device is None else db.photons_on_device
+    if not on_device:
+        for idx in db.voxel_ids:
+            pos = meta.voxel_to_coord(idx).numpy()
+            yield sample_photon_bomb(
+                db.nphotons, pos, voxel_size=db.voxel_size, wavelength=db.wavelength
+            )
+        return
+
+    import torch
+    rng = torch.Generator(device="cuda")
+    rng.manual_seed(int(np.random.randint(0, 2**62)))  # follows the Simulation seed, like np.random
+    # The photons of a Simulation batch of voxels are drawn together.
+    chunk = max(1, db.chroma_photons_per_batch // db.nphotons)
+    for start in range(0, len(db.voxel_ids), chunk):
+        ids = db.voxel_ids[start:start + chunk]
+        centres = np.stack([meta.voxel_to_coord(idx).numpy() for idx in ids])
+        photons = device_photons.photon_bombs(db.nphotons, centres, voxel_size=db.voxel_size,
+                                              wavelength=db.wavelength, generator=rng)
+        for i in range(len(ids)):
+            yield Event(photons_beg=photons[i * db.nphotons:(i + 1) * db.nphotons])
 
 
 def __simulation_start__(db):
@@ -329,6 +389,7 @@ def __simulation_start__(db):
     db.file.attrs["time_clip_max"] = float(db.time_clip_max) if db.time_clip_max is not None else -1.0
     db.file.attrs["audit_every_n_voxels"] = int(db.audit_every_n_voxels)
 
+    db.pending = {name: [] for name in _ROW_DATASETS}
     db.current_ev_idx = 0
     db.t_start = time.time()
     
@@ -365,26 +426,12 @@ def __process_event__(db, ev):
     vid = np.uint32(db.voxel_ids[db.current_ev_idx])
     pos = db.meta.voxel_to_coord(db.voxel_ids[db.current_ev_idx]).numpy().astype(np.float32)
 
-    # Append compact outputs.
-    ds = db.file["yield_counts"]
-    ds.resize(ds.shape[0] + 1, axis=0)
-    ds[-1] = yields
-
-    ds = db.file["quantiles"]
-    ds.resize(ds.shape[0] + 1, axis=0)
-    ds[-1] = quantiles.astype(db.q_dtype, copy=False)
-
-    ds = db.file["voxel_id"]
-    ds.resize(ds.shape[0] + 1, axis=0)
-    ds[-1] = vid
-
-    ds = db.file["t0"]
-    ds.resize(ds.shape[0] + 1, axis=0)
-    ds[-1] = t0.astype(np.float32, copy=False)
-
-    ds = db.file["pos"]
-    ds.resize(ds.shape[0] + 1, axis=0)
-    ds[-1] = pos
+    # Compact outputs: rows are written every db.flush_every voxels.
+    db.pending["yield_counts"].append(yields)
+    db.pending["quantiles"].append(quantiles.astype(db.q_dtype, copy=False))
+    db.pending["voxel_id"].append(vid)
+    db.pending["t0"].append(t0.astype(np.float32, copy=False))
+    db.pending["pos"].append(pos)
 
     # Optional audit: store full raw hits for every Nth processed voxel.
     if db.audit_enabled and ((db.current_ev_idx % int(db.audit_every_n_voxels)) == 0):
@@ -411,8 +458,8 @@ def __process_event__(db, ev):
             ds.resize(ds.shape[0] + 1, axis=0)
             ds[-1] = value
 
-    if (db.current_ev_idx + 1) % 10 == 0:
-        db.file.flush()
+    if (db.current_ev_idx + 1) % db.flush_every == 0:
+        _write_pending(db)
 
     db.current_ev_idx += 1
 
@@ -421,4 +468,5 @@ def __simulation_end__(db):
     """Called at the end of the event loop"""
     logger.info(f"Simulation ended.")
     logger.info(f"Closing file...")
+    _write_pending(db)
     db.file.close()
