@@ -21,9 +21,13 @@ from chroma.log import logger
 logger.setLevel(logging.INFO)
 from chroma.event import Event, Photons
 
-from chroma_lar.generator import device_photons
 from chroma_lar.geometry import build_detector_from_config
 from photonlib.meta import VoxelMeta
+
+try:
+    from trichroma import sources  # photons drawn on the GPU (TriChroma's Triton backend)
+except ImportError:  # original Chroma: numpy photons
+    sources = None
 
 
 def sample_photon_bomb(nphotons, pos, voxel_size=30, wavelength=128) -> Photons:
@@ -230,7 +234,7 @@ def __event_generator__(db):
     else:
         db.voxel_ids = range(db.voxel_index_start, db.voxel_index_start + db.batch_size)
 
-    on_device = device_photons.available() if db.photons_on_device is None else db.photons_on_device
+    on_device = (sources is not None and sources.available()) if db.photons_on_device is None else db.photons_on_device
     if not on_device:
         for idx in db.voxel_ids:
             pos = meta.voxel_to_coord(idx).numpy()
@@ -247,8 +251,8 @@ def __event_generator__(db):
     for start in range(0, len(db.voxel_ids), chunk):
         ids = db.voxel_ids[start:start + chunk]
         centres = np.stack([meta.voxel_to_coord(idx).numpy() for idx in ids])
-        photons = device_photons.photon_bombs(db.nphotons, centres, voxel_size=db.voxel_size,
-                                              wavelength=db.wavelength, generator=rng)
+        photons = sources.photon_bombs(db.nphotons, centres, voxel_size=db.voxel_size,
+                                       wavelength=db.wavelength, generator=rng)
         for i in range(len(ids)):
             yield Event(photons_beg=photons[i * db.nphotons:(i + 1) * db.nphotons])
 
