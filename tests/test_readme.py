@@ -12,6 +12,6 @@ def test_install_is_uv():
 
 
 def test_lut_rules_are_documented():
-    for phrase in ("use_weights=False", "CHROMA_TRITON=legacy", "CHROMA_BACKEND=cuda", "18%",
+    for phrase in ("chroma_use_weights", "CHROMA_TRITON=legacy", "CHROMA_BACKEND=cuda", "18%",
                    "chroma_lar/provenance.py"):
         assert phrase in README

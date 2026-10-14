@@ -204,6 +204,8 @@ def __configure__(db):
     db.chroma_keep_hits = False
     db.chroma_keep_flat_hits = True
     db.chroma_max_steps = 1000
+    # Lookup tables count photons and take quantiles of single hit times: no weights.
+    db.chroma_use_weights = False
     db.chroma_use_packed = True  # use float4 packed format for A100 optimization
 
 
@@ -393,7 +395,7 @@ def __simulation_start__(db):
     db.file.attrs["quantile_u_max"] = float(db.quantile_u_max)
     db.file.attrs["time_clip_max"] = float(db.time_clip_max) if db.time_clip_max is not None else -1.0
     db.file.attrs["audit_every_n_voxels"] = int(db.audit_every_n_voxels)
-    write_run_attrs(db.file)  # backend, CHROMA_TRITON options, code revisions
+    write_run_attrs(db.file, db.chroma_use_weights)  # backend, options, code revisions
 
     db.pending = {name: [] for name in _ROW_DATASETS}
     db.current_ev_idx = 0

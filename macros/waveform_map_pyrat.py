@@ -128,6 +128,8 @@ def __configure__(db):
     db.chroma_keep_hits = False
     db.chroma_keep_flat_hits = True
     db.chroma_max_steps = 1000
+    # Lookup tables count photons and take quantiles of single hit times: no weights.
+    db.chroma_use_weights = False
 
 
 def __define_geometry__(db):
@@ -188,7 +190,7 @@ def __simulation_start__(db):
         logger.warning(f"File {db.output_filename} already exists! Removing...")
         os.remove(db.output_filename)
     db.file = h5py.File(db.output_filename, "w")
-    write_run_attrs(db.file)  # backend, CHROMA_TRITON options, code revisions
+    write_run_attrs(db.file, db.chroma_use_weights)  # backend, options, code revisions
     db.file.create_dataset(
         "counts",
         shape=(0,db.num_pmts*db.num_ticks // 2),

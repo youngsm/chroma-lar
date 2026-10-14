@@ -48,10 +48,11 @@ new lookup tables are not comparable to ones made with CUDA Chroma (b04, b05).
 `CHROMA_TRITON=legacy` restores CUDA Chroma's behaviour; `CHROMA_BACKEND=cuda`
 runs CUDA Chroma itself.
 
-Lookup tables are made with unweighted photons: `yield_counts` are photon
-counts and `quantiles` are quantiles of single hit times. `pyrat` always calls
-`simulate(..., use_weights=False)`; `CHROMA_TRITON=roulette=<w>` only acts on
-weighted runs and has no effect here.
+`pyrat` passes the database setting `chroma_use_weights` (default `False`) to
+`simulate`. Lookup tables should use unweighted photons, since `yield_counts`
+are photon counts and `quantiles` are quantiles of single hit times, so the
+waveform-map macros set it to `False`. `CHROMA_TRITON=roulette=<w>` only acts
+on weighted runs.
 
 The waveform-map macros record how each file was made in its root attributes
 (`backend`, `chroma_triton`, `trichroma_commit`, `chroma_lar_commit`, ...; see

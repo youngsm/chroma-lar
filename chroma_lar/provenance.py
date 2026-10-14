@@ -61,8 +61,9 @@ def _gpu_name():
         return ""
 
 
-def run_attrs():
-    """The attributes describing this run (backend, options, code revisions, GPU)."""
+def run_attrs(use_weights):
+    """The attributes describing this run (backend, options, code revisions, GPU);
+    ``use_weights`` is the value passed to ``Simulation.simulate``."""
     import chroma
     import chroma_lar
     from chroma.backend import backend_name
@@ -79,14 +80,14 @@ def run_attrs():
         "chroma_lar_version": lar_version,
         "chroma_lar_commit": lar_commit,
         "chroma_lar_dirty": lar_dirty,
-        "use_weights": 0,  # pyrat always simulates unweighted photons
+        "use_weights": int(bool(use_weights)),
         "torch_version": _version("torch"),
         "triton_version": _version("triton"),
         "gpu_name": _gpu_name(),
     }
 
 
-def write_run_attrs(h5file):
+def write_run_attrs(h5file, use_weights):
     """Write :func:`run_attrs` into ``h5file``'s root attributes."""
-    for key, value in run_attrs().items():
+    for key, value in run_attrs(use_weights).items():
         h5file.attrs[key] = value

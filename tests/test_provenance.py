@@ -32,7 +32,7 @@ def _repo_with_module(tmp_path, rel):
 def test_run_attrs_keys_and_types(monkeypatch):
     monkeypatch.delenv("CHROMA_BACKEND", raising=False)
     monkeypatch.setenv("CHROMA_TRITON", "legacy")
-    attrs = provenance.run_attrs()
+    attrs = provenance.run_attrs(use_weights=False)
     assert set(attrs) == KEYS
     assert all(isinstance(v, (str, int)) for v in attrs.values())
     assert attrs["backend"] == "triton"
@@ -43,7 +43,7 @@ def test_run_attrs_keys_and_types(monkeypatch):
 
 def test_run_attrs_without_gpu(monkeypatch):
     monkeypatch.setattr(provenance, "_gpu_name", lambda: "")
-    assert provenance.run_attrs()["gpu_name"] == ""
+    assert provenance.run_attrs(use_weights=False)["gpu_name"] == ""
 
 
 def test_checkout_reports_head_and_dirty(tmp_path):
@@ -75,8 +75,8 @@ def test_git_install_reports_recorded_commit(monkeypatch, tmp_path):
 def test_write_run_attrs(tmp_path):
     with h5py.File(tmp_path / "out.h5", "w") as f:
         f.attrs["nphotons_generated"] = 5
-        provenance.write_run_attrs(f)
+        provenance.write_run_attrs(f, True)
     with h5py.File(tmp_path / "out.h5", "r") as f:
         assert KEYS <= set(f.attrs)
         assert f.attrs["nphotons_generated"] == 5
-        assert f.attrs["use_weights"] == 0
+        assert f.attrs["use_weights"] == 1

@@ -45,3 +45,8 @@ def test_waveform_macro_writes_provenance(name):
              if isinstance(node, ast.Call) and getattr(node.func, "id", None) == "write_run_attrs"]
     assert len(calls) == 1
     assert ast.unparse(calls[0].args[0]) == "db.file"
+    assert ast.unparse(calls[0].args[1]) == "db.chroma_use_weights"
+    configure = next(node for node in tree.body
+                     if isinstance(node, ast.FunctionDef) and node.name == "__configure__")
+    assert "db.chroma_use_weights = False" in [ast.unparse(node) for node in ast.walk(configure)
+                                               if isinstance(node, ast.Assign)]
