@@ -137,13 +137,17 @@ if __name__ == '__main__':
     if sim is None:
         any(process_event(db,ev) for ev in gen)
     else:
+        # Lookup tables count photons and take quantiles of single hit times,
+        # so photons are never weighted (CHROMA_TRITON=roulette only acts on
+        # weighted runs).
         it = sim.simulate(gen, run_daq=db.chroma_daq,
                           photons_per_batch=db.chroma_photons_per_batch,
                           keep_photons_beg=db.chroma_keep_photons_beg,
                           keep_photons_end=db.chroma_keep_photons_end,
                           keep_hits=db.chroma_keep_hits,
                           keep_flat_hits=db.chroma_keep_flat_hits,
-                          max_steps=db.chroma_max_steps)
+                          max_steps=db.chroma_max_steps,
+                          use_weights=False)
         any(process_event(db,ev) for ev in it)
         
     if args.output is not None:
