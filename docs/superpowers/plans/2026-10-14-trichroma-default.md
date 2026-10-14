@@ -31,7 +31,7 @@
 - Provenance keys, exactly: `backend`, `chroma_triton`, `chroma_triton_tape`, `trichroma_version`, `trichroma_commit`, `trichroma_dirty`, `chroma_lar_version`, `chroma_lar_commit`, `chroma_lar_dirty`, `use_weights`, `torch_version`, `triton_version`, `gpu_name`. Values are `str` or `int`.
 - Waveform-map macros that write provenance: `macros/waveform_map_pyrat.py`, `macros/waveform_map_pyrat_32bit.py`, `macros/waveform_map_pyrat_quantile.py`.
 - GPU jobs: `srun --account=neutrino:cider-nu --partition=ampere|turing --gpus=1 --cpus-per-gpu=4 --mem=48G --time=3:00:00`.
-- Pushing the branch and changing the dependency URL after the rename need the user's yes at that step.
+- Pushing the feature branch `trichroma-default` is pre-approved. Changing the dependency URL after the rename needs the user's yes at that step.
 
 ## Review Focus
 
@@ -1311,9 +1311,9 @@ rm -rf /sdf/data/neutrino/youngsam/.cache/uv-cold /sdf/data/neutrino/youngsam/en
 ```
 Expected: completes without compiling; record the wall time for the report.
 
-- [ ] **Step 3: Ask the user, then push the branch**
+- [ ] **Step 3: Push the branch (pre-approved)**
 
-Show `git log --oneline origin/trichroma-fast-waveform..trichroma-default` and ask to push `trichroma-default` to `origin` (needed for the image to clone it). After yes:
+The image clones the branch from GitHub. Push only if Steps 1-2 passed:
 
 ```bash
 git push -u origin trichroma-default
