@@ -17,32 +17,46 @@ Chroma-LAr provides a set of tools for modeling and analyzing the behavior of ph
 >
 >With the assistance of a CUDA-enabled GPU, Chroma can propagate 2.5 million photons per second in a detector with 29,000 photomultiplier tubes. This is 200x faster than the same simulation with GEANT4.
 
-`chroma` requires a CUDA-enabled GPU to work. To check if your GPU is CUDA-enabled, you can use the [CUDA GPU Checker](https://developer.nvidia.com/cuda-gpus). We will use [`chroma-lite`](https://github.com/youngsm/chroma-lite), which is a lighter version of `chroma` for just optical propagation -- with no Geant4 integration for particle propagation and scintillation generation.
+`chroma` requires an NVIDIA GPU to simulate. We use [TriChroma](https://github.com/youngsm/trichroma), a version of `chroma` for optical propagation only (no Geant4 particle propagation or scintillation generation) whose simulation runs on Triton.
 
-### Installing chroma-lite
+### Installing
 
-`chroma-lite` can be installed via pip, i.e.,
-
-```bash
-pip install -e git+https://github.com/youngsm/chroma-lite
-```
-
-</details>
-
-### Setting up `chroma-lar` for use.
-
-Install chroma-lar by following the instructions below.
+chroma-lar runs on [TriChroma](https://github.com/youngsm/trichroma): Chroma
+with a Triton GPU backend, installed together with chroma-lar. Nothing is
+compiled and PyCUDA is not needed. Simulations need Linux and an NVIDIA GPU;
+building geometry works without one.
 
 ```bash
-# Clone the repository
 git clone https://github.com/youngsm/chroma-lar.git
-# Set up the environment
-source chroma-lar/env.sh
-# Add the environment setup to your bashrc (optional)
-echo "source $PWD/chroma-lar/env.sh" >> ~/.bashrc
+cd chroma-lar
+uv sync                       # .venv with chroma-lar, TriChroma, PyTorch, Triton
+source .venv/bin/activate
+source chroma_lar_env.sh      # puts pyrat on PATH
 ```
 
-Note that `env.sh` adds the `chroma-lar` directory to your `PYTHONPATH`. This allows you to import the modules from the repository in your scripts.
+`uv sync --extra cuda` also installs PyCUDA for the original CUDA backend
+(`CHROMA_BACKEND=cuda`); it compiles PyCUDA and needs the CUDA toolkit. Keep
+`UV_CACHE_DIR` and `TRITON_CACHE_DIR` (compiled kernels) on a large disk; on
+S3DF, under `/sdf/data`.
+
+### Backends and lookup tables
+
+`chroma.sim.Simulation` runs on TriChroma's Triton engine by default, in its
+production mode, which fixes several CUDA Chroma bugs. On this repository's
+wire TPC the wire-plane fix alone raises the detected light by about 18%, so
+new lookup tables are not comparable to ones made with CUDA Chroma (b04, b05).
+`CHROMA_TRITON=legacy` restores CUDA Chroma's behaviour; `CHROMA_BACKEND=cuda`
+runs CUDA Chroma itself.
+
+Lookup tables are made with unweighted photons: `yield_counts` are photon
+counts and `quantiles` are quantiles of single hit times. `pyrat` always calls
+`simulate(..., use_weights=False)`; `CHROMA_TRITON=roulette=<w>` only acts on
+weighted runs and has no effect here.
+
+The waveform-map macros record how each file was made in its root attributes
+(`backend`, `chroma_triton`, `trichroma_commit`, `chroma_lar_commit`, ...; see
+`chroma_lar/provenance.py`). `python -m chroma_lar.validation A.h5 B.h5`
+compares two runs of the same voxels statistically.
 
 ## Geometries
 
