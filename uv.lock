@@ -214,8 +214,8 @@ requires-dist = [
     { name = "scipy" },
     { name = "torch", specifier = "==2.5.1" },
     { name = "tqdm" },
-    { name = "trichroma", git = "https://github.com/youngsm/chroma-lite.git?rev=3045a8c" },
-    { name = "trichroma", extras = ["cuda"], marker = "extra == 'cuda'", git = "https://github.com/youngsm/chroma-lite.git?rev=3045a8c" },
+    { name = "trichroma", git = "https://github.com/youngsm/chroma-lite.git?rev=d2b2870" },
+    { name = "trichroma", extras = ["cuda"], marker = "extra == 'cuda'", git = "https://github.com/youngsm/chroma-lite.git?rev=d2b2870" },
     { name = "trimesh" },
 ]
 provides-extras = ["cuda"]
@@ -1864,7 +1864,7 @@ wheels = [
 [[package]]
 name = "trichroma"
 version = "0.6.0"
-source = { git = "https://github.com/youngsm/chroma-lite.git?rev=3045a8c#3045a8cc9bc2253fd90ec7f73ff237c41a09d82c" }
+source = { git = "https://github.com/youngsm/chroma-lite.git?rev=d2b2870#d2b2870b87e5a6341bec7973b8e113cf8ffcc26b" }
 dependencies = [
     { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.11.*'" },
