@@ -43,7 +43,7 @@
 
 ---
 
-### Task 1: pyproject.toml, uv environment, CPU smoke tests
+### Task 1: pyproject.toml, uv environment, CPU tests
 
 **Files:**
 - Create: `pyproject.toml`, `.python-version`, `tests/test_packaging.py`
@@ -352,9 +352,9 @@ git commit -q -m "pyrat: always simulate unweighted photons" -m "Lookup tables c
 
 **Interfaces:**
 - Produces:
-  - `source_state(dist_name: str, module_file: str) -> tuple[str, str, int]` — `(version, commit, dirty)`.
-  - `run_attrs() -> dict[str, str | int]` — exactly the Global Constraints keys.
-  - `write_run_attrs(h5file) -> None` — sets each key on `h5file.attrs`.
+  - `source_state(dist_name: str, module_file: str) -> tuple[str, str, int]` - `(version, commit, dirty)`.
+  - `run_attrs() -> dict[str, str | int]` - exactly the Global Constraints keys.
+  - `write_run_attrs(h5file) -> None` - sets each key on `h5file.attrs`.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -719,7 +719,7 @@ git add jobs/submit_waveform_jobs.py tests/test_jobs.py
 git commit -q -m "Job scripts: Triton's kernel cache goes to the job's scratch" -m "TRITON_CACHE_DIR sits next to PYCUDA_CACHE_DIR, so compiled kernels never land in \$HOME."
 ```
 
-### Task 7: `chroma_lar.validation` — compare two waveform-map runs
+### Task 7: `chroma_lar.validation` - compare two waveform-map runs
 
 **Files:**
 - Create: `chroma_lar/validation.py`, `tests/test_validation.py`
@@ -727,7 +727,7 @@ git commit -q -m "Job scripts: Triton's kernel cache goes to the job's scratch" 
 **Interfaces:**
 - Consumes: `chroma.triton.utils.two_proportion_z(k1, n1, k2, n2) -> float`, `chroma.triton.utils.ks_test(a, b, alpha) -> dict | None` (`{"distance", "bound", "pass"}`).
 - Produces:
-  - `load_hits(path) -> tuple[dict[int, tuple[np.ndarray, np.ndarray]], int, int]` — `({voxel_id: (times, channels)}, nphotons_per_voxel, num_channels)` from the audit datasets.
+  - `load_hits(path) -> tuple[dict[int, tuple[np.ndarray, np.ndarray]], int, int]` - `({voxel_id: (times, channels)}, nphotons_per_voxel, num_channels)` from the audit datasets.
   - `compare(path_a, path_b, max_sigma=5.0, alpha=1e-6, min_hits=25) -> dict` with keys `voxels`, `missing`, `tests`, `z_max`, `z_mean`, `z_std`, `worst`, `ks_failures`, `yield_ratio`, `passed`.
   - CLI: `python -m chroma_lar.validation A.h5 B.h5 [--json OUT] [--max-sigma 5]`; exit 0 when `passed`, else 1.
 
