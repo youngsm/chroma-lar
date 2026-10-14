@@ -107,7 +107,7 @@ def main():
         pprint.pprint(det_config)
         voxel_id_arg = f'-s voxel_id_file {config["voxel_id_file"]}' if config.get("voxel_id_file") else ''
         cmd = f"""
-        PYCUDA_CACHE_DIR=/lscratch singularity exec --nv -B /lscratch,/sdf {config["container"]} \\
+        PYCUDA_CACHE_DIR=/lscratch TRITON_CACHE_DIR=/lscratch/$USER/triton-cache singularity exec --nv -B /lscratch,/sdf {config["container"]} \\
         /opt/conda/bin/python {pyrat_script} {waveform_map_script} \\
             -s detector_config {config["detector_config"]} \\
             -es voxel_ranges "({config["detector_x_range"]}, {config["detector_y_range"]}, {config["detector_z_range"]})" \\
@@ -245,8 +245,9 @@ echo "=================================="
 cd $work_dir
 echo "Work dir ${{work_dir}}"
 ls $work_dir
-mkdir -p tmp
+mkdir -p tmp/triton
 export PYCUDA_CACHE_DIR=$PWD/tmp
+export TRITON_CACHE_DIR=$PWD/tmp/triton
 echo "Running chroma"
 date
 
