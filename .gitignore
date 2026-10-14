@@ -12,4 +12,4 @@
 *.txt
 *.pkl
 *.npz
-*.csv
+*.csv.venv/
