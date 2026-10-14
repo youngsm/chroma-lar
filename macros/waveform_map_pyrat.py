@@ -9,6 +9,7 @@ logger.setLevel(logging.INFO)
 from chroma.event import Event, Photons
 
 from chroma_lar.geometry import build_detector_from_config
+from chroma_lar.provenance import write_run_attrs
 from photonlib.meta import VoxelMeta
 
 try:
@@ -187,6 +188,7 @@ def __simulation_start__(db):
         logger.warning(f"File {db.output_filename} already exists! Removing...")
         os.remove(db.output_filename)
     db.file = h5py.File(db.output_filename, "w")
+    write_run_attrs(db.file)  # backend, CHROMA_TRITON options, code revisions
     db.file.create_dataset(
         "counts",
         shape=(0,db.num_pmts*db.num_ticks // 2),

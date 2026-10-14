@@ -16,6 +16,7 @@ from chroma.log import logger
 from chroma.event import Photons
 
 from chroma_lar.geometry import build_detector_from_config
+from chroma_lar.provenance import write_run_attrs
 from photonlib.meta import VoxelMeta
 
 MAX_UINT32 = np.iinfo(np.uint32).max
@@ -159,6 +160,7 @@ def __simulation_start__(db):
         logger.warning(f"File {db.output_filename} already exists! Removing...")
         os.remove(db.output_filename)
     db.file = h5py.File(db.output_filename, "w")
+    write_run_attrs(db.file)  # backend, CHROMA_TRITON options, code revisions
     
     db.num_ticks_early = 100
     num_channels = db.num_pmts // 2

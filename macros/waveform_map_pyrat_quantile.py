@@ -22,6 +22,7 @@ logger.setLevel(logging.INFO)
 from chroma.event import Event, Photons
 
 from chroma_lar.geometry import build_detector_from_config
+from chroma_lar.provenance import write_run_attrs
 from photonlib.meta import VoxelMeta
 
 try:
@@ -392,6 +393,7 @@ def __simulation_start__(db):
     db.file.attrs["quantile_u_max"] = float(db.quantile_u_max)
     db.file.attrs["time_clip_max"] = float(db.time_clip_max) if db.time_clip_max is not None else -1.0
     db.file.attrs["audit_every_n_voxels"] = int(db.audit_every_n_voxels)
+    write_run_attrs(db.file)  # backend, CHROMA_TRITON options, code revisions
 
     db.pending = {name: [] for name in _ROW_DATASETS}
     db.current_ev_idx = 0
