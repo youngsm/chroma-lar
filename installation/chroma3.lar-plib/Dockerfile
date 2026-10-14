@@ -11,8 +11,11 @@ RUN /opt/conda/bin/python -m pip install --no-cache-dir uv==0.11.28
 WORKDIR /workspace/
 ADD https://api.github.com/repos/youngsm/chroma-lar/git/refs/heads/${CHROMA_LAR_REF} /opt/chroma_lar_version.json
 RUN git clone --branch ${CHROMA_LAR_REF} https://github.com/youngsm/chroma-lar
-# chroma-lar, TriChroma (Chroma + its Triton backend) and photonlib; no PyCUDA
-RUN uv pip install --no-cache --python /opt/conda/bin/python -e /workspace/chroma-lar
+# chroma-lar, TriChroma (Chroma + its Triton backend) and photonlib; no PyCUDA.
+# Run from the checkout so uv reads its [tool.uv] settings (photonlib's build dependency).
+WORKDIR /workspace/chroma-lar/
+RUN uv pip install --no-cache --python /opt/conda/bin/python -e .
+WORKDIR /workspace/
 # analysis extras
 RUN uv pip install --no-cache --python /opt/conda/bin/python scikit-learn gdown \
     git+https://github.com/CIDeR-ML/siren-lartpc.git \
