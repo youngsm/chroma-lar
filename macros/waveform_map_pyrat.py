@@ -12,8 +12,8 @@ from chroma_lar.geometry import build_detector_from_config
 from photonlib.meta import VoxelMeta
 
 try:
-    from trichroma import sources  # photons drawn on the GPU (TriChroma's Triton backend)
-except ImportError:  # original Chroma: numpy photons
+    from chroma.triton import sources  # photons drawn on the GPU (Triton backend)
+except ImportError:  # a Chroma without the Triton engine: numpy photons
     sources = None
 
 

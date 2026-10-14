@@ -169,7 +169,7 @@ def __simulation_start__(db):
         maxshape=(None, num_channels*db.num_ticks_early),
         dtype=np.uint32, 
         chunks=True
-    )-
+    )
     db.file.create_dataset(
         "counts_late",
         shape=(0, num_channels*(db.num_ticks - db.num_ticks_early)),
