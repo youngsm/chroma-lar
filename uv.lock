@@ -214,8 +214,8 @@ requires-dist = [
     { name = "scipy" },
     { name = "torch", specifier = "==2.5.1" },
     { name = "tqdm" },
-    { name = "trichroma", git = "https://github.com/youngsm/trichroma.git?rev=0f84275" },
-    { name = "trichroma", extras = ["cuda"], marker = "extra == 'cuda'", git = "https://github.com/youngsm/trichroma.git?rev=0f84275" },
+    { name = "trichroma", git = "https://github.com/youngsm/trichroma.git?rev=fcae69c" },
+    { name = "trichroma", extras = ["cuda"], marker = "extra == 'cuda'", git = "https://github.com/youngsm/trichroma.git?rev=fcae69c" },
     { name = "trimesh" },
 ]
 provides-extras = ["cuda"]
@@ -1864,7 +1864,7 @@ wheels = [
 [[package]]
 name = "trichroma"
 version = "0.6.0"
-source = { git = "https://github.com/youngsm/trichroma.git?rev=0f84275#0f84275e05652f1c8bfe14390e041d6345b903b4" }
+source = { git = "https://github.com/youngsm/trichroma.git?rev=fcae69c#fcae69c31e92dc8422042e30a424955886812608" }
 dependencies = [
     { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.11.*'" },
