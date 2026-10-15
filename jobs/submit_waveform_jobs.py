@@ -77,7 +77,7 @@ def main():
     if args.macro is not None:
         config["macro"] = args.macro
     elif "macro" not in config:
-        config["macro"] = "waveform_map_pyrat_32bit.py"
+        config["macro"] = "waveform_map_pyrat_quantile.py"
 
     site = args.site if args.site else config.get("site", "slac")
     site_config = site_config.get(site)
@@ -107,7 +107,7 @@ def main():
         pprint.pprint(det_config)
         voxel_id_arg = f'-s voxel_id_file {config["voxel_id_file"]}' if config.get("voxel_id_file") else ''
         cmd = f"""
-        PYCUDA_CACHE_DIR=/lscratch TRITON_CACHE_DIR=/lscratch/$USER/triton-cache singularity exec --nv -B /lscratch,/sdf {config["container"]} \\
+        PYCUDA_CACHE_DIR=/lscratch TRITON_CACHE_DIR=/lscratch/$USER/triton-cache {site_config["container_cmd"]} \\
         /opt/conda/bin/python {pyrat_script} {waveform_map_script} \\
             -s detector_config {config["detector_config"]} \\
             -es voxel_ranges "({config["detector_x_range"]}, {config["detector_y_range"]}, {config["detector_z_range"]})" \\

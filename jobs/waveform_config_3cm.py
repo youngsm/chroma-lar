@@ -1,10 +1,8 @@
 import os
 
 """
-10M: mean = 6.356 s, std = 0.811 s --> 1596672 vox = 2,819 hours 
-15M: mean = 9.168 s, std = 0.779 s --> 1596672 vox = 4,066 hours
-20M: mean = 11.957 s, std = 1.190 s --> 1596672 vox = 5,303 hours
-25M: mean = 14.880 s, std = 0.727 s --> 1596672 vox = 6,599.5776 hours
+TriChroma on an A100, 30M photons per voxel: 0.24 s per voxel (124M photons/s)
+--> 1596672 voxels = ~107 GPU-hours.
 """
 
 # Detector and voxel configuration
@@ -16,20 +14,22 @@ config = {
     # Voxel parameters
     "voxel_size": 30,  # mm
     # Simulation parameters
-    "nphotons": 15_000_000,
+    "nphotons": 30_000_000,
     "detector_config": "detector_config_reflect_reflect3wires",
+    "macro": "waveform_map_pyrat_quantile.py",
     # Job parameters
-    "time_per_voxel": 10,  # seconds per voxel
-    "max_job_time": 8 * 60 * 60,  # 12 hours in seconds
+    "time_per_voxel": 0.3,  # seconds per voxel
+    "max_job_time": 8 * 60 * 60,  # 8 hours in seconds
     "slurm_max_job_time_buffer": 2 * 60 * 60,  # 2 hours in seconds
     # Site-specific configuration
-    "site": "perlmutter",
+    "site": "slac",
 }
 
 site = dict(
     slac=dict(
         work_dir="$LSCRATCH",
-        container_cmd="singularity exec --nv -B /lscratch,/sdf /sdf/home/y/youngsam/sw/dune/sim/chroma-lar/installation/chroma3.lar-plib/chroma.simg",
+        # built from installation/chroma3.lar-plib/Singularity
+        container_cmd=f"singularity exec --nv -B /lscratch,/sdf /sdf/data/neutrino/{os.environ['USER']}/containers/chroma-lar.sif",
         output_dir=f"/sdf/data/neutrino/{os.environ['USER']}/prod_chroma_lar/waveform_map",
         slurm=dict(
             partition='ampere',
@@ -40,6 +40,7 @@ site = dict(
     ),
     perlmutter=dict(
         work_dir="$PSCRATCH",
+        # predates TriChroma (runs CUDA Chroma): rebuild from installation/chroma3.lar-plib/Dockerfile
         container_cmd="shifter --image=deeplearnphysics/simlar:larchroma-2025-07-18",
         output_dir=f"/global/cfs/cdirs/m5238/users/{os.environ['USER']}/prod_chroma_lar/waveform_map",
         slurm=dict(

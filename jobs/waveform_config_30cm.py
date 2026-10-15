@@ -1,10 +1,8 @@
 import os
 
 """
-10M: mean = 6.356 s, std = 0.811 s
-15M: mean = 9.168 s, std = 0.779 s
-20M: mean = 11.957 s, std = 1.190 s
-25M: mean = 14.880 s, std = 0.727 s
+TriChroma on an A100 runs ~124M photons/s on the 3 cm grid; 15M photons per voxel
+is estimated at ~0.12 s per voxel (not measured on this grid).
 """
 # Detector and voxel configuration
 config = {
@@ -17,8 +15,9 @@ config = {
     # Simulation parameters
     "nphotons": 15_000_000,
     "detector_config": "detector_config_reflect_reflect3wires",
+    "macro": "waveform_map_pyrat_quantile.py",
     # Job parameters
-    "time_per_voxel": 9.168,  # seconds per voxel
+    "time_per_voxel": 0.15,  # seconds per voxel (estimate)
     "max_job_time": 3 * 60 * 60,  # 3 hours in seconds
     "slurm_max_job_time_buffer": 2 * 60,  # 2 minutes in seconds
     "site": "slac",
@@ -28,7 +27,8 @@ config = {
 site = dict(
     slac=dict(
         work_dir="$LSCRATCH",
-        container_cmd="singularity exec --nv -B /lscratch,/sdf /sdf/home/y/youngsam/sw/dune/sim/chroma-lar/installation/chroma3.lar-plib/chroma.simg",
+        # built from installation/chroma3.lar-plib/Singularity
+        container_cmd=f"singularity exec --nv -B /lscratch,/sdf /sdf/data/neutrino/{os.environ['USER']}/containers/chroma-lar.sif",
         output_dir=f"/sdf/data/neutrino/{os.environ['USER']}/prod_chroma_lar/waveform_map",
         slurm=dict(
             partition='ampere',
@@ -39,6 +39,7 @@ site = dict(
     ),
     perlmutter=dict(
         work_dir="$PSCRATCH",
+        # predates TriChroma (runs CUDA Chroma): rebuild from installation/chroma3.lar-plib/Dockerfile
         container_cmd="shifter --image=deeplearnphysics/simlar:larchroma-2025-07-18",
         output_dir=f"/global/cfs/cdirs/dune/users/{os.environ['USER']}/prod_chroma_lar/waveform_map",
         slurm=dict(
