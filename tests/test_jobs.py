@@ -28,3 +28,13 @@ def test_run_script_sets_triton_cache(tmp_path):
         assert "export TRITON_CACHE_DIR=$PWD/tmp/triton" in run
         assert "export PYCUDA_CACHE_DIR=$PWD/tmp" in run
         assert "macros/waveform_map_pyrat_quantile.py" in run  # the default macro
+
+
+def test_site_without_container_runs_the_uv_environment(tmp_path):
+    out = tmp_path / "uv"
+    config = tmp_path / "config_uv.py"
+    config.write_text(CONFIG.format(site="slac", out=out).replace('container_cmd="true", ', ""))
+    subprocess.run([sys.executable, str(ROOT / "jobs" / "submit_waveform_jobs.py"), "--dry-run",
+                    "--config", str(config)], check=True, capture_output=True, cwd=ROOT / "jobs")
+    assert "uv run --frozen --project %s python" % ROOT in (out / "run.sh").read_text()
+    assert "/opt/conda/bin/python" not in (out / "run.sh").read_text()

@@ -28,8 +28,7 @@ config = {
 site = dict(
     slac=dict(
         work_dir="$LSCRATCH",
-        # built from installation/chroma3.lar-plib/Singularity
-        container_cmd=f"singularity exec --nv -B /lscratch,/sdf /sdf/data/neutrino/{os.environ['USER']}/containers/chroma-lar.sif",
+        # no container_cmd: jobs run this checkout's uv environment (`uv sync` first)
         output_dir=f"/sdf/data/neutrino/{os.environ['USER']}/prod_chroma_lar/waveform_map",
         slurm=dict(
             partition='ampere',
