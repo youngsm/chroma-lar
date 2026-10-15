@@ -81,6 +81,10 @@ def main():
 
     site = args.site if args.site else config.get("site", "slac")
     site_config = site_config.get(site)
+    # Without a container, jobs run the repository's uv environment.
+    container_cmd = site_config.get("container_cmd", "")
+    repo_root = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+    python_cmd = "/opt/conda/bin/python" if container_cmd else f"uv run --frozen --project {repo_root} python"
     slurm_config = site_config.get("slurm")
 
     # calculate batch size (# positions / job) and total jobs
@@ -107,8 +111,8 @@ def main():
         pprint.pprint(det_config)
         voxel_id_arg = f'-s voxel_id_file {config["voxel_id_file"]}' if config.get("voxel_id_file") else ''
         cmd = f"""
-        PYCUDA_CACHE_DIR=/lscratch TRITON_CACHE_DIR=/lscratch/$USER/triton-cache {site_config["container_cmd"]} \\
-        /opt/conda/bin/python {pyrat_script} {waveform_map_script} \\
+        PYCUDA_CACHE_DIR=/lscratch TRITON_CACHE_DIR=/lscratch/$USER/triton-cache {container_cmd} \\
+        {python_cmd} {pyrat_script} {waveform_map_script} \\
             -s detector_config {config["detector_config"]} \\
             -es voxel_ranges "({config["detector_x_range"]}, {config["detector_y_range"]}, {config["detector_z_range"]})" \\
             -es voxel_size {config["voxel_size"]} \\
@@ -141,7 +145,7 @@ def main():
     print(f"  Photons per voxel: {config['nphotons']:,}")
     print(f"  Detector config: {config['detector_config']}")
     print(f"  Output directory: {site_config['output_dir']}")
-    print(f"  Container CMD: {site_config['container_cmd']}")
+    print(f"  Container CMD: {container_cmd or '(none: uv environment)'}")
     
     print("\nJob Distribution:")
     print(f"  Estimated time per voxel: {config['time_per_voxel']} seconds")
@@ -201,7 +205,7 @@ trap copy_output EXIT
 
 date
 echo "starting a job for the job ${{SLURM_ARRAY_JOB_ID}} task ${{SLURM_ARRAY_TASK_ID}}"
-{site_config['container_cmd']} {run_script_path}
+{container_cmd} {run_script_path}
 echo "done"
 date
 """
@@ -264,7 +268,7 @@ voxel_id_file_arg=""
 """
     
     run_script += f"""
-/opt/conda/bin/python {pyrat_script} {waveform_map_script} \\
+{python_cmd} {pyrat_script} {waveform_map_script} \\
     --set detector_config {config["detector_config"]} \\
     --evalset voxel_ranges "({config['detector_x_range']}, {config['detector_y_range']}, {config['detector_z_range']})" \\
     --evalset voxel_size {config["voxel_size"]} \\
