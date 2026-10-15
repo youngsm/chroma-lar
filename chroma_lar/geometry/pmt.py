@@ -247,15 +247,15 @@ def generate_pmt_positions_ywalls(
     dir_py = np.tile([0.0, -1.0, 0.0], (n_half, 1)).astype(np.float32)
     dir_my = np.tile([0.0,  1.0, 0.0], (n_half, 1)).astype(np.float32)
 
-    # Order: first half = +X side (both walls), second half = -X side (both walls)
+    # Order: first half = -X side (both walls), second half = +X side (both walls)
     # PMT i and PMT i + N/2 share the same (|x|, y, z) with x sign flipped.
-    pos_plus_x  = np.vstack([pos_q1, pos_q3])   # +X side: +/- Y wall, then +/- Y wall
+    pos_plus_x  = np.vstack([pos_q1, pos_q3])   # +X side: +Y wall, then -Y wall
     pos_minus_x = np.vstack([pos_q2, pos_q4])   # -X side: same order
     dir_plus_x  = np.vstack([dir_py, dir_my])
     dir_minus_x = np.vstack([dir_py, dir_my])
 
-    positions  = np.vstack([pos_plus_x, pos_minus_x]).astype(np.float32)
-    directions = np.vstack([dir_plus_x, dir_minus_x]).astype(np.float32)
+    positions  = np.vstack([pos_minus_x, pos_plus_x]).astype(np.float32)
+    directions = np.vstack([dir_minus_x, dir_plus_x]).astype(np.float32)
     ids = np.arange(len(positions), dtype=np.int32)
 
     print(f"Total PMT number is {len(positions)}")

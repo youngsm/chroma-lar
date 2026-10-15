@@ -212,14 +212,7 @@ def __configure__(db):
 def __define_geometry__(db):
     """Returns a chroma Detector or Geometry"""
     logger.info(f"Building geometry...")
-    geometry = build_detector_from_config(
-        db.detector_config,
-        flatten=True,
-        include_wires=True,
-        include_active=True,
-        include_cathode=True,
-        include_cavity=True,
-    )
+    geometry = build_detector_from_config(db.detector_config, flatten=True)
     logger.info(f"Built geometry.")
     db.geometry = geometry
     return geometry
