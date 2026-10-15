@@ -4,7 +4,7 @@
 <img src="assets/tpcs.png" alt="drawing"/>
 </p>
 
-Chroma-LAr provides a set of tools for modeling and analyzing the behavior of photons in liquid argon detectors using [chroma-lite](https://github.com/youngsm/chroma-lite) simulation framework. It includes:
+Chroma-LAr provides a set of tools for modeling and analyzing the behavior of photons in liquid argon detectors using [TriChroma](https://github.com/youngsm/trichroma) simulation framework. It includes:
 
 - Scaffolding for defining custom geometries and materials for liquid argon detectors
 - Tools to create, save, and use light maps in detectors

@@ -9,7 +9,7 @@ description = "Liquid-argon detector geometries, optics and lookup-table macros 
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-    "trichroma @ git+https://github.com/youngsm/chroma-lite.git@d2b2870",
+    "trichroma @ git+https://github.com/youngsm/trichroma.git@0f84275",
     "photonlib @ git+https://github.com/CIDeR-ML/photonlib.git",
     "torch==2.5.1",
     "numpy",
@@ -26,7 +26,7 @@ dependencies = [
 
 [project.optional-dependencies]
 # CUDA Chroma (CHROMA_BACKEND=cuda): compiles PyCUDA, needs the CUDA toolkit.
-cuda = ["trichroma[cuda] @ git+https://github.com/youngsm/chroma-lite.git@d2b2870"]
+cuda = ["trichroma[cuda] @ git+https://github.com/youngsm/trichroma.git@0f84275"]
 
 [dependency-groups]
 dev = ["pytest"]
