@@ -11,7 +11,6 @@ config = {{
     "detector_x_range": (-2310, 0), "detector_y_range": (-2160, 2160), "detector_z_range": (-2160, 2160),
     "voxel_size": 30, "nphotons": 1000, "detector_config": "detector_config_reflect_reflect3wires",
     "time_per_voxel": 1, "max_job_time": 3600, "slurm_max_job_time_buffer": 600, "site": "{site}",
-    "macro": "waveform_map_pyrat_quantile.py",
 }}
 site = dict({site}=dict(work_dir="$TMPDIR", container_cmd="true", output_dir="{out}",
                         slurm=dict(output="{out}/logs/%A_%a.log", error="{out}/logs/%A_%a.log")))
@@ -28,3 +27,4 @@ def test_run_script_sets_triton_cache(tmp_path):
         run = (out / "run.sh").read_text()
         assert "export TRITON_CACHE_DIR=$PWD/tmp/triton" in run
         assert "export PYCUDA_CACHE_DIR=$PWD/tmp" in run
+        assert "macros/waveform_map_pyrat_quantile.py" in run  # the default macro
