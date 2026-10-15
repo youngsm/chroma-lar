@@ -16,8 +16,8 @@ RUN git clone --branch ${CHROMA_LAR_REF} https://github.com/youngsm/chroma-lar
 WORKDIR /workspace/chroma-lar/
 RUN uv pip install --no-cache --python /opt/conda/bin/python -e .
 WORKDIR /workspace/
-# analysis extras
-RUN uv pip install --no-cache --python /opt/conda/bin/python scikit-learn gdown \
+# analysis extras (their setup.py files import skbuild, installed above with photonlib)
+RUN uv pip install --no-cache --python /opt/conda/bin/python --no-build-isolation scikit-learn gdown \
     git+https://github.com/CIDeR-ML/siren-lartpc.git \
     git+https://github.com/CIDeR-ML/sirentv.git
 ENV PYRAT_ROOT=/workspace/chroma-lar

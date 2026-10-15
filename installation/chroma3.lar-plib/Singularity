@@ -37,8 +37,8 @@ From: pytorch/pytorch:2.5.1-cuda12.4-cudnn9-devel
     # chroma-lar, TriChroma (Chroma + its Triton backend) and photonlib; no PyCUDA.
     # Run from the checkout so uv reads its [tool.uv] settings (photonlib's build dependency).
     cd /workspace/chroma-lar && uv pip install --python /opt/conda/bin/python -e . && cd /workspace
-    # analysis extras
-    uv pip install --python /opt/conda/bin/python scikit-learn gdown \
+    # analysis extras (their setup.py files import skbuild, installed above with photonlib)
+    uv pip install --python /opt/conda/bin/python --no-build-isolation scikit-learn gdown \
         git+https://github.com/CIDeR-ML/siren-lartpc.git \
         git+https://github.com/CIDeR-ML/sirentv.git
     rm -rf /tmp/uv-cache
