@@ -207,7 +207,7 @@ requires-dist = [
     { name = "h5py" },
     { name = "matplotlib" },
     { name = "numpy" },
-    { name = "photonlib", git = "https://github.com/CIDeR-ML/photonlib.git" },
+    { name = "photonlib", git = "https://github.com/CIDeR-ML/photonlib.git?rev=f27db21" },
     { name = "pydantic" },
     { name = "pyyaml" },
     { name = "rich" },
@@ -1219,7 +1219,7 @@ wheels = [
 [[package]]
 name = "photonlib"
 version = "0.1"
-source = { git = "https://github.com/CIDeR-ML/photonlib.git#f27db2156bfcfeab27d91ee813570d392e7850cf" }
+source = { git = "https://github.com/CIDeR-ML/photonlib.git?rev=f27db21#f27db2156bfcfeab27d91ee813570d392e7850cf" }
 dependencies = [
     { name = "gdown" },
     { name = "h5py" },

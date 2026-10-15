@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "trichroma @ git+https://github.com/youngsm/trichroma.git@0f84275",
-    "photonlib @ git+https://github.com/CIDeR-ML/photonlib.git",
+    "photonlib @ git+https://github.com/CIDeR-ML/photonlib.git@f27db21",
     "torch==2.5.1",
     "numpy",
     "scipy",
