@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chroma-lar"
+version = "0.1.0"
+description = "Liquid-argon detector geometries, optics and lookup-table macros for Chroma (TriChroma)"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "trichroma @ git+https://github.com/youngsm/trichroma.git@0f84275",
+    "photonlib @ git+https://github.com/CIDeR-ML/photonlib.git@f27db21",
+    "torch==2.5.1",
+    "numpy",
+    "scipy",
+    "h5py",
+    "trimesh",
+    "PyYAML",
+    "pydantic",
+    "rich",
+    "tqdm",
+    "matplotlib",
+    "fire",
+]
+
+[project.optional-dependencies]
+# CUDA Chroma (CHROMA_BACKEND=cuda): compiles PyCUDA, needs the CUDA toolkit.
+cuda = ["trichroma[cuda] @ git+https://github.com/youngsm/trichroma.git@0f84275"]
+
+[dependency-groups]
+dev = ["pytest"]
+
+[tool.uv]
+environments = ["sys_platform == 'linux'"]
+
+[tool.uv.extra-build-dependencies]
+# photonlib's setup.py imports skbuild without declaring it as a build requirement.
+photonlib = ["scikit-build"]
+
+[tool.setuptools.packages.find]
+include = ["chroma_lar*", "data*", "utils*"]
+
+[tool.setuptools.package-data]
+chroma_lar = ["config/*.yaml", "geometry/custom_optics/photocathodes/*.csv"]
+data = ["*.csv", "*.txt"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

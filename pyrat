@@ -143,7 +143,8 @@ if __name__ == '__main__':
                           keep_photons_end=db.chroma_keep_photons_end,
                           keep_hits=db.chroma_keep_hits,
                           keep_flat_hits=db.chroma_keep_flat_hits,
-                          max_steps=db.chroma_max_steps)
+                          max_steps=db.chroma_max_steps,
+                          use_weights=db.chroma_use_weights)
         any(process_event(db,ev) for ev in it)
         
     if args.output is not None:

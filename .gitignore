@@ -13,3 +13,5 @@
 *.pkl
 *.npz
 *.csv
+.venv/
+*.egg-info/

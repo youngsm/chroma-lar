@@ -8,6 +8,7 @@ chroma_keep_hits = False
 chroma_keep_flat_hits = False
 chroma_keep_photons_beg = False 
 chroma_keep_photons_end = False
+chroma_use_weights = False
 
 __exports__ = [
     "chroma_daq",
@@ -20,4 +21,5 @@ __exports__ = [
     "chroma_keep_flat_hits",
     "chroma_keep_photons_beg",
     "chroma_keep_photons_end",
+    "chroma_use_weights",
 ]

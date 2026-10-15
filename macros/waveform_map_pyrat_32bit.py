@@ -16,6 +16,7 @@ from chroma.log import logger
 from chroma.event import Photons
 
 from chroma_lar.geometry import build_detector_from_config
+from chroma_lar.provenance import write_run_attrs
 from photonlib.meta import VoxelMeta
 
 MAX_UINT32 = np.iinfo(np.uint32).max
@@ -82,6 +83,8 @@ def __configure__(db):
     db.chroma_keep_hits = False
     db.chroma_keep_flat_hits = True
     db.chroma_max_steps = 1000
+    # Lookup tables count photons and take quantiles of single hit times: no weights.
+    db.chroma_use_weights = False
     db.chroma_use_packed = True  # use float4 packed format for A100 optimization
 
 
@@ -159,6 +162,7 @@ def __simulation_start__(db):
         logger.warning(f"File {db.output_filename} already exists! Removing...")
         os.remove(db.output_filename)
     db.file = h5py.File(db.output_filename, "w")
+    write_run_attrs(db.file, db.chroma_use_weights)  # backend, options, code revisions
     
     db.num_ticks_early = 100
     num_channels = db.num_pmts // 2
@@ -169,7 +173,7 @@ def __simulation_start__(db):
         maxshape=(None, num_channels*db.num_ticks_early),
         dtype=np.uint32, 
         chunks=True
-    )-
+    )
     db.file.create_dataset(
         "counts_late",
         shape=(0, num_channels*(db.num_ticks - db.num_ticks_early)),

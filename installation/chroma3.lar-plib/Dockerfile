@@ -1,34 +1,29 @@
 FROM pytorch/pytorch:2.5.1-cuda12.4-cudnn9-devel
+ARG CHROMA_LAR_REF=main
 
-# Install system dependencies
 RUN apt-get update && apt-get install -y \
     git \
     wget \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /opt/
-ADD https://api.github.com/repos/youngsm/chroma-lite/git/refs/heads/master /opt/chroma_version.json
-RUN git clone https://github.com/youngsm/chroma-lite
-RUN mv chroma-lite chroma
-RUN sed -i 's/VIRTUAL_ENV/CONDA_PREFIX/g' setup.py #use anaconda env instead
-
-# quick fix for EventViewer
-RUN sed -i '741s/self\.i = len(self\.l-1)/self.i = len(self.l)-1/' chroma/camera.py
-RUN python3 -m pip install -e .
-# below are extras for analyses
-RUN python3 -m pip install -U trimesh numpy scipy scikit-learn h5py fire scikit-build
-RUN python3 -m pip install git+https://github.com/CIDeR-ML/photonlib.git
-RUN python3 -m pip install git+https://github.com/CIDeR-ML/siren-lartpc.git
-RUN python3 -m pip install gdown
-RUN python3 -m pip install rich
+RUN /opt/conda/bin/python -m pip install --no-cache-dir uv==0.11.28
 WORKDIR /workspace/
-RUN git clone https://github.com/youngsm/chroma-lar
+ADD https://api.github.com/repos/youngsm/chroma-lar/git/refs/heads/${CHROMA_LAR_REF} /opt/chroma_lar_version.json
+RUN git clone --branch ${CHROMA_LAR_REF} https://github.com/youngsm/chroma-lar
+# chroma-lar, TriChroma (Chroma + its Triton backend) and photonlib; no PyCUDA.
+# Run from the checkout so uv reads its [tool.uv] settings (photonlib's build dependency).
 WORKDIR /workspace/chroma-lar/
-RUN sh chroma_lar_env.sh
-RUN python3 -m pip install -e .
+RUN uv pip install --no-cache --python /opt/conda/bin/python -e .
 WORKDIR /workspace/
-RUN python3 -m pip install git+https://github.com/CIDeR-ML/sirentv.git
+# analysis extras (their setup.py files import skbuild, installed above with photonlib)
+RUN uv pip install --no-cache --python /opt/conda/bin/python --no-build-isolation scikit-learn gdown \
+    git+https://github.com/CIDeR-ML/siren-lartpc.git \
+    git+https://github.com/CIDeR-ML/sirentv.git
+ENV PYRAT_ROOT=/workspace/chroma-lar
+ENV PATH=/workspace/chroma-lar:$PATH
+# keep a mounted home's ~/.local installs from shadowing the image's packages
+ENV PYTHONNOUSERSITE=1
 
 #For jupyter
 EXPOSE 8888
